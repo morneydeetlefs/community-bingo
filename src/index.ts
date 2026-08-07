@@ -73,7 +73,7 @@ const kvKeys = (id: string) => ({
 function corsHeaders(env: Env): HeadersInit {
   return {
     'Access-Control-Allow-Origin':  env.ALLOWED_ORIGIN,
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
   };
 }
@@ -320,7 +320,7 @@ export default {
         return handleEndSession(endMatch[1], env);
       }
 
-      // u2500u2500 GET /bingo/session/:id/tickets u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500u2500
+      // ── GET /bingo/session/:id/tickets
       const ticketsMatch = path.match(/^\/bingo\/session\/([^/]+)\/tickets$/);
       if (method === 'GET' && ticketsMatch) {
         return handleGetTickets(ticketsMatch[1], env);
@@ -588,17 +588,16 @@ async function handleGetWinners(id: string, env: Env): Promise<Response> {
 
 /**
  * GET /bingo/session/:id/tickets
- * Returns all tickets for a session (id, player_name, player_phone, paid, card_count, created_at).
- * Does NOT return card grids — those are large and only needed by play.html.
+ * Returns all tickets for a session (metadata only, no card grids).
  */
 async function handleGetTickets(id: string, env: Env): Promise<Response> {
   const session = await env.DB
-    .prepare("SELECT id FROM sessions WHERE id = ?")
+    .prepare('SELECT id FROM sessions WHERE id = ?')
     .bind(id).first<{ id: string }>();
-  if (!session) return err("Session not found", 404, env);
+  if (!session) return err('Session not found', 404, env);
 
   const rows = await env.DB
-    .prepare("SELECT id, player_name, player_phone, paid, created_at, json_array_length(cards) as card_count FROM tickets WHERE session_id = ? ORDER BY created_at ASC")
+    .prepare('SELECT id, player_name, player_phone, paid, created_at, json_array_length(cards) as card_count FROM tickets WHERE session_id = ? ORDER BY created_at ASC')
     .bind(id).all<{ id: string; player_name: string; player_phone: string; paid: number; created_at: number; card_count: number }>();
 
   return json({ tickets: rows.results ?? [] }, 200, env);
@@ -803,7 +802,7 @@ async function handleClaim(request: Request, env: Env): Promise<Response> {
   await env.KV.put(kvKeys(session_id).winner, JSON.stringify({
     ref,
     player_name:  ticketRow.player_name,
-    tier:         prize_tier,
+    prize_tier,
     ticket_id,
     card_index,
     prize_amount,
