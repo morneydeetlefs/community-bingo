@@ -371,9 +371,16 @@ body::before {
 }
 .dot {
   width: 6px; height: 6px; border-radius: 50%;
-  background: var(--border-lt); transition: background .2s;
+  background: var(--border-lt); transition: background .2s, transform .2s;
+  cursor: pointer;
 }
-.dot.active { background: var(--gold) }
+.dot.active { background: var(--gold); transform: scale(1.3); }
+
+/* ── Card slide animation ── */
+@keyframes slideInRight { from { opacity:0; transform:translateX(32px) } to { opacity:1; transform:translateX(0) } }
+@keyframes slideInLeft  { from { opacity:0; transform:translateX(-32px) } to { opacity:1; transform:translateX(0) } }
+.card-slide-right { animation: slideInRight .22s ease-out }
+.card-slide-left  { animation: slideInLeft  .22s ease-out }
 
 /* ── Daub hint ── */
 .daub-hint {
@@ -767,7 +774,8 @@ screen.orientation?.addEventListener('change', () => setTimeout(scaleApp, 200));
 
 let session       = null;
 let tickets       = [];     // array of { id, cards, player_name, paid }
-let currentCard   = 0;      // index into tickets (for multi-ticket, card 0 of each ticket)
+let currentTicket = 0;      // index into tickets[] — which ticket object
+let currentCard   = 0;      // index into tickets[currentTicket].cards[] — which card within that ticket
 let calledNums    = new Set();
 let autoDaub      = true;
 let pendingDaubs  = new Set();
@@ -780,6 +788,35 @@ let fullTicketUrl = null;   // for stale link banner
 
 // Derived
 let mode          = '90';   // set once session loads
+
+// Helper: total cards across all tickets (for carousel)
+function totalCards() {
+  return tickets.reduce((sum, t) => sum + (t.cards?.length || 1), 0);
+}
+
+// Helper: get flat card index (0-based across all tickets' cards)
+function flatCardIndex() {
+  let idx = 0;
+  for (let ti = 0; ti < currentTicket; ti++) idx += (tickets[ti].cards?.length || 1);
+  return idx + currentCard;
+}
+
+// Helper: set currentTicket + currentCard from a flat index
+function setFromFlatIndex(flat) {
+  let remaining = flat;
+  for (let ti = 0; ti < tickets.length; ti++) {
+    const cardCount = tickets[ti].cards?.length || 1;
+    if (remaining < cardCount) {
+      currentTicket = ti;
+      currentCard   = remaining;
+      return;
+    }
+    remaining -= cardCount;
+  }
+  // clamp to last
+  currentTicket = tickets.length - 1;
+  currentCard   = (tickets[currentTicket].cards?.length || 1) - 1;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -1039,18 +1076,24 @@ function markTierWon(tier) {
 // ── Card rendering ────────────────────────────────────────────────────────────
 
 function renderCard() {
-  const ticket = tickets[currentCard];
+  const ticket = tickets[currentTicket];
   if (!ticket) return;
-  const card = ticket.cards[0]; // each ticket has one card (carousel is per-ticket)
+  const card = ticket.cards[currentCard]; // carousel navigates within a ticket's cards[]
+  if (!card) return;
 
-  $('card-title').textContent = tickets.length > 1
-    ? `Card ${currentCard + 1} — ${ticket.player_name}`
+  const total = totalCards();
+  const flat  = flatCardIndex();
+  $('card-title').textContent = total > 1
+    ? `Card ${flat + 1} of ${total}`
     : 'Your Card';
 
   const grid = $('card-grid');
   const hdrs = $('col-headers');
   grid.innerHTML = '';
   hdrs.innerHTML = '';
+
+  // Use a unique cell key per ticket + card index so multiple cards' cells don't collide
+  const cellPrefix = `${ticket.id}-c${currentCard}`;
 
   if (mode === '90') {
     grid.style.gridTemplateColumns = 'repeat(9, 1fr)';
@@ -1063,7 +1106,7 @@ function renderCard() {
     // 3 rows × 9 cols
     card.forEach((row, ri) => {
       row.forEach((val, ci) => {
-        grid.appendChild(makeCell(val, ri, ci, ticket.id));
+        grid.appendChild(makeCell(val, ri, ci, cellPrefix));
       });
     });
   } else {
@@ -1077,7 +1120,7 @@ function renderCard() {
     card.forEach((row, ri) => {
       row.forEach((val, ci) => {
         const isCenter = ri === 2 && ci === 2;
-        grid.appendChild(makeCell(isCenter ? null : val, ri, ci, ticket.id, isCenter));
+        grid.appendChild(makeCell(isCenter ? null : val, ri, ci, cellPrefix, isCenter));
       });
     });
   }
@@ -1116,38 +1159,58 @@ function makeCell(val, ri, ci, ticketId, isFree = false) {
 // ── Carousel ─────────────────────────────────────────────────────────────────
 
 function buildDots() {
-  const dots = $('card-dots');
+  const dots  = $('card-dots');
+  const total = totalCards();
   dots.innerHTML = '';
-  if (tickets.length <= 1) { dots.classList.add('hidden'); return; }
+  if (total <= 1) { dots.classList.add('hidden'); return; }
   dots.classList.remove('hidden');
-  tickets.forEach((_, i) => {
+  const flat = flatCardIndex();
+  for (let i = 0; i < total; i++) {
     const d = document.createElement('div');
-    d.className = 'dot' + (i === currentCard ? ' active' : '');
+    d.className = 'dot' + (i === flat ? ' active' : '');
     d.onclick = () => goCard(i);
     dots.appendChild(d);
-  });
+  }
 }
 
 function updateCardNav() {
-  const nav = $('card-nav');
-  if (tickets.length <= 1) { nav.classList.add('hidden'); return; }
+  const nav   = $('card-nav');
+  const total = totalCards();
+  if (total <= 1) { nav.classList.add('hidden'); return; }
   nav.classList.remove('hidden');
-  $('card-nav-label').textContent = `${currentCard + 1} / ${tickets.length}`;
-  $('btn-prev').disabled = currentCard === 0;
-  $('btn-next').disabled = currentCard === tickets.length - 1;
+  const flat = flatCardIndex();
+  $('card-nav-label').textContent = `${flat + 1} / ${total}`;
+  $('btn-prev').disabled = flat === 0;
+  $('btn-next').disabled = flat === total - 1;
 }
 
-function goCard(i) {
-  currentCard = i;
+function goCard(flatIdx) {
+  const prevFlat = flatCardIndex();
+  const dir = flatIdx > prevFlat ? 'right' : 'left';
+  setFromFlatIndex(flatIdx);
   pendingDaubs.clear();
   renderCard();
   buildDots();
   updateCardNav();
+  applyAllCalled();   // re-daub the newly shown card
+  checkWins();
   updateBingoBtn();
+  // Animate the grid in
+  const grid = $('card-grid');
+  grid.classList.remove('card-slide-right', 'card-slide-left');
+  void grid.offsetWidth; // reflow
+  grid.classList.add(dir === 'right' ? 'card-slide-right' : 'card-slide-left');
 }
 
-function prevCard() { if (currentCard > 0) goCard(currentCard - 1) }
-function nextCard() { if (currentCard < tickets.length - 1) goCard(currentCard + 1) }
+function prevCard() {
+  const flat = flatCardIndex();
+  if (flat > 0) goCard(flat - 1);
+}
+function nextCard() {
+  const flat  = flatCardIndex();
+  const total = totalCards();
+  if (flat < total - 1) goCard(flat + 1);
+}
 
 // Swipe support
 let swipeStartX = null;
@@ -1165,8 +1228,9 @@ function toggleDaub(btn) {
   autoDaub = !autoDaub;
   btn.classList.toggle('on', autoDaub);
   if (autoDaub) {
-    // Daub all pending
-    pendingDaubs.forEach(n => daubCell(n, tickets[currentCard]?.id));
+    // Daub all pending on the currently visible card
+    const prefix = currentCellPrefix();
+    pendingDaubs.forEach(n => daubCell(n, prefix));
     pendingDaubs.clear();
   } else {
     // Un-daub isn't possible — just mark newly called as pending going forward
@@ -1175,21 +1239,28 @@ function toggleDaub(btn) {
   checkWins();
 }
 
-function manualDaub(val, ticketId) {
+function manualDaub(val, cellPrefix) {
   if (autoDaub) return;
   if (!pendingDaubs.has(val)) return;
-  daubCell(val, ticketId);
+  daubCell(val, cellPrefix);
   pendingDaubs.delete(val);
   updateDaubHint();
   checkWins();
 }
 
-function daubCell(val, ticketId) {
-  const el = $(`cell-${ticketId}-${val}`);
+function daubCell(val, cellPrefix) {
+  const el = $(`cell-${cellPrefix}-${val}`);
   if (!el || el.classList.contains('daubed') || el.classList.contains('blank')) return;
   el.classList.remove('tappable');
   el.classList.add('flash');
   setTimeout(() => el.classList.add('daubed'), 100);
+}
+
+// Returns the cellPrefix for the currently visible card
+function currentCellPrefix() {
+  const ticket = tickets[currentTicket];
+  if (!ticket) return null;
+  return `${ticket.id}-c${currentCard}`;
 }
 
 function updateDaubHint() {
@@ -1202,8 +1273,10 @@ function updateDaubHint() {
 
 function applyAllCalled() {
   calledNums.forEach(n => {
-    tickets.forEach(ticket => {
-      if (autoDaub) daubCell(n, ticket.id);
+    tickets.forEach((ticket, ti) => {
+      (ticket.cards || [ticket.cards]).forEach((card, ci) => {
+        if (autoDaub) daubCell(n, `${ticket.id}-c${ci}`);
+      });
     });
   });
 }
@@ -1229,26 +1302,35 @@ function onNewBall(n, call) {
   $('call-phrase').textContent = call || n;
   $('call-sub').textContent = `${calledNums.size} called`;
 
-  // Daub on current ticket
-  const ticket = tickets[currentCard];
+  // Daub on all cards across all tickets (only visible card gets animation; others get silently daubed)
+  tickets.forEach((ticket, ti) => {
+    (ticket.cards || []).forEach((card, ci) => {
+      if (!card.flat().includes(n)) return;
+      if (autoDaub) daubCell(n, `${ticket.id}-c${ci}`);
+    });
+  });
+
+  // Toast only if the number is on the currently visible card
+  const ticket = tickets[currentTicket];
   if (!ticket) return;
+  const card = ticket.cards[currentCard];
+  if (!card) return;
+  const onCurrentCard = card.flat().includes(n);
 
-  const card = ticket.cards[0];
-  const onCard = card.flat().includes(n);
-  if (!onCard) return;
-
-  if (autoDaub) {
-    daubCell(n, ticket.id);
-    toast(`${n} — daubed!`, 'success', 1800);
-  } else {
-    pendingDaubs.add(n);
-    const el = $(`cell-${ticket.id}-${n}`);
-    if (el) {
-      el.classList.add('tappable');
-      el.addEventListener('click', () => manualDaub(n, ticket.id), { once: true });
+  if (onCurrentCard) {
+    if (autoDaub) {
+      toast(`${n} — daubed!`, 'success', 1800);
+    } else {
+      const prefix = currentCellPrefix();
+      pendingDaubs.add(n);
+      const el = $(`cell-${prefix}-${n}`);
+      if (el) {
+        el.classList.add('tappable');
+        el.addEventListener('click', () => manualDaub(n, prefix), { once: true });
+      }
+      updateDaubHint();
+      toast(`${n} is on your card — tap to daub`, 'info', 2500);
     }
-    updateDaubHint();
-    toast(`${n} is on your card — tap to daub`, 'info', 2500);
   }
 
   checkWins();
@@ -1258,9 +1340,10 @@ function onNewBall(n, call) {
 
 function checkWins() {
   if (session?.status !== 'active') return;
-  const ticket = tickets[currentCard];
+  const ticket = tickets[currentTicket];
   if (!ticket) return;
-  const card = ticket.cards[0];
+  const card = ticket.cards[currentCard];
+  if (!card) return;
 
   const daubed = (val) => val === null || calledNums.has(val);
 
@@ -1294,14 +1377,15 @@ function updateBingoBtn(canClaim) {
 // ── BINGO claim ───────────────────────────────────────────────────────────────
 
 async function claimBingo() {
-  const ticket = tickets[currentCard];
+  const ticket = tickets[currentTicket];
   if (!ticket) return;
   const btn = $('bingo-btn');
   btn.disabled = true;
   btn.classList.remove('pulse');
 
   // Determine which tier to claim (highest eligible unclaimed tier)
-  const card   = ticket.cards[0];
+  const card = ticket.cards[currentCard];
+  if (!card) return;
   const daubed = (val) => val === null || calledNums.has(val);
 
   let tier = null;
@@ -1329,7 +1413,7 @@ async function claimBingo() {
       body: JSON.stringify({
         ticket_id:  ticket.id,
         session_id: session.id,
-        card_index: 0,
+        card_index: currentCard,
         prize_tier: tier,
       }),
     });
