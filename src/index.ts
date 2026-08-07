@@ -779,7 +779,7 @@ async function handleClaim(request: Request, env: Env): Promise<Response> {
   await env.KV.put(kvKeys(session_id).winner, JSON.stringify({
     ref,
     player_name:  ticketRow.player_name,
-    tier:         prize_tier,
+    prize_tier,
     ticket_id,
     card_index,
     prize_amount,
