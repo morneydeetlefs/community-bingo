@@ -3,8 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev":    "wrangler dev",
-    "deploy": "wrangler deploy",
+    "stamp":          "node -e \"const fs=require('fs');const sw=fs.readFileSync('sw.js','utf8');fs.writeFileSync('sw.js',sw.replace(/CACHE_VERSION = 'bingo-[^']+'/,\\`CACHE_VERSION = 'bingo-\${Date.now()}'\\`))\"",
+    "dev":            "wrangler dev",
+    "predeploy":      "npm run stamp",
+    "deploy":         "wrangler deploy",
     "migrate:local":  "wrangler d1 execute community-bingo-db --file=schema.sql",
     "migrate:remote": "wrangler d1 execute community-bingo-db --file=schema.sql --remote"
   },
