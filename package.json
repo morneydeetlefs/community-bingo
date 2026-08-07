@@ -1,0 +1,16 @@
+{
+  "name": "community-bingo",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev":    "wrangler dev",
+    "deploy": "wrangler deploy",
+    "migrate:local":  "wrangler d1 execute community-bingo-db --file=schema.sql",
+    "migrate:remote": "wrangler d1 execute community-bingo-db --file=schema.sql --remote"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "typescript":                "^5.4.0",
+    "wrangler":                  "^3.0.0"
+  }
+}

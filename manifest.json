@@ -1,0 +1,16 @@
+{
+  "name": "Community Bingo",
+  "short_name": "Bingo",
+  "description": "Your bingo card — MD Works",
+  "start_url": "/bingo/play.html",
+  "display": "fullscreen",
+  "orientation": "portrait",
+  "background_color": "#110e09",
+  "theme_color": "#110e09",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "categories": ["games", "entertainment"],
+  "lang": "en-ZA"
+}

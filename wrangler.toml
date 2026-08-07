@@ -1,0 +1,24 @@
+name = "community-bingo"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# ── D1 Database ───────────────────────────────────────────────────────────────
+# After `wrangler d1 create community-bingo-db`, paste the database_id below.
+[[d1_databases]]
+binding  = "DB"
+database_name = "community-bingo-db"
+database_id   = "6c422dd5-2ee9-4c99-a546-a8be72a9e31e"
+
+# ── KV Namespace ──────────────────────────────────────────────────────────────
+# After `wrangler kv:namespace create BINGO_KV`, paste the id below.
+# After `wrangler kv:namespace create BINGO_KV --preview`, paste the preview_id.
+[[kv_namespaces]]
+binding    = "KV"
+id         = "442730cce3f64c5c9cb50f40c7c4c372"
+preview_id = "8f877d611a7544a88a8335bb28507321"
+
+# ── CORS origin ───────────────────────────────────────────────────────────────
+# Update this once you have a Cloudflare Pages URL or custom domain.
+[vars]
+ALLOWED_ORIGIN = "*"

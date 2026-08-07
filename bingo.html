@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Caller ✦ Community Bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@1,300;1,400&family=Raleway:wght@300;400;500&family=Syne:wght@400;500;600&family=Syne+Mono&display=swap" rel="stylesheet"/>
+<style>
+/* ══════════════════════════════════════════
+   MD WORKS — COMMUNITY BINGO — CALLER SCREEN
+   Morney Deetlefs · mdworks.dev
+══════════════════════════════════════════ */
+:root {
+  --md-black:      #0a0906;
+  --md-dark:       #110e09;
+  --md-surface:    #1a1610;
+  --md-panel:      #211c14;
+  --md-border:     #2c2619;
+  --md-border-lt:  #3d3526;
+  --md-gold-dk:    #7a5815;
+  --md-gold:       #c9943c;
+  --md-gold-lt:    #e8c87a;
+  --md-gold-pale:  #f5e4bb;
+  --md-gold-glow:  rgba(201,148,60,.10);
+  --md-cream:      #f0e6ce;
+  --md-muted:      #7a6d58;
+  --md-success:    #4caf7a;
+  --md-danger:     #c94c4c;
+  --md-radius:     4px;
+
+  /* 90-ball decade colours */
+  --ball-1: #c0392b; --ball-1l: #e74c3c;
+  --ball-2: #d4ac0d; --ball-2l: #f1c40f;
+  --ball-3: #1e8449; --ball-3l: #27ae60;
+  --ball-4: #1a5276; --ball-4l: #2980b9;
+  --ball-5: #ba4a00; --ball-5l: #e67e22;
+  --ball-6: #6c3483; --ball-6l: #9b59b6;
+  --ball-7: #0e6655; --ball-7l: #1abc9c;
+  --ball-8: #922b21; --ball-8l: #e74c3c;
+  --ball-9: #1b2631; --ball-9l: #74c0fc;
+
+  /* 75-ball BINGO column colours */
+  --col-B: #c0392b; --col-Bl: #e74c3c;
+  --col-I: #d4ac0d; --col-Il: #f1c40f;
+  --col-N: #1e8449; --col-Nl: #27ae60;
+  --col-G: #1a5276; --col-Gl: #2980b9;
+  --col-O: #6c3483; --col-Ol: #9b59b6;
+}
+
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+body {
+  background: var(--md-dark);
+  color: var(--md-cream);
+  font-family: 'Syne', sans-serif;
+  font-weight: 400;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+}
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+body::after {
+  content: '';
+  position: fixed; top: -20vh; left: 50%; transform: translateX(-50%);
+  width: 80vw; height: 60vh;
+  background: radial-gradient(ellipse, rgba(201,148,60,.06) 0%, transparent 70%);
+  pointer-events: none; z-index: 0;
+}
+
+.page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 1rem 1rem 3rem }
+
+/* ── Header ── */
+.caller-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .8rem 0 .8rem;
+  border-bottom: 1px solid var(--md-border);
+  margin-bottom: 1.2rem; gap: 1rem; flex-wrap: wrap;
+}
+.header-brand { display: flex; align-items: center; gap: .8rem }
+.brand-mark { font-family: 'Cinzel', serif; font-size: .65rem; color: var(--md-gold-dk); letter-spacing: .35em; text-transform: uppercase }
+.header-title { font-family: 'Cinzel', serif; font-size: 1.2rem; font-weight: 900; color: var(--md-gold-lt); letter-spacing: .06em }
+.header-session { font-family: 'Syne Mono', monospace; font-size: .65rem; color: var(--md-muted); letter-spacing: .06em; line-height: 1.5 }
+.header-session strong { color: var(--md-cream) }
+
+/* ── Setup screen (before session loaded) ── */
+#setup-screen {
+  max-width: 460px; margin: 4rem auto; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 1.2rem;
+}
+.setup-title { font-family: 'Cinzel', serif; font-size: 1.1rem; color: var(--md-gold-lt); letter-spacing: .08em }
+.setup-sub { font-family: 'Cormorant Garamond', serif; font-style: italic; color: var(--md-muted); font-size: .95rem }
+.setup-input-row { display: flex; gap: .6rem; width: 100% }
+.setup-input {
+  flex: 1; padding: .7rem .9rem;
+  background: var(--md-surface); border: 1px solid var(--md-border-lt);
+  border-radius: var(--md-radius); color: var(--md-cream);
+  font-family: 'Syne Mono', monospace; font-size: .8rem; letter-spacing: .04em;
+  outline: none; transition: border-color .2s;
+}
+.setup-input:focus { border-color: var(--md-gold) }
+.setup-input::placeholder { color: var(--md-muted) }
+
+/* ── Main layout ── */
+.caller-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 780px) { .caller-grid { grid-template-columns: 1fr } }
+
+/* ── Left panel ── */
+.left-panel { display: flex; flex-direction: column; gap: .9rem }
+
+.panel {
+  background: var(--md-surface); border: 1px solid var(--md-border);
+  border-radius: var(--md-radius); padding: 1.1rem 1rem;
+  position: relative; overflow: hidden;
+}
+.panel::before {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(160deg, var(--md-gold-glow) 0%, transparent 55%);
+}
+.panel-label {
+  font-family: 'Syne Mono', monospace; font-size: .55rem;
+  letter-spacing: .28em; text-transform: uppercase; color: var(--md-gold-dk);
+  margin-bottom: .75rem; display: flex; align-items: center; gap: .6rem;
+}
+.panel-label::after { content: ''; flex: 1; height: 1px; background: var(--md-border) }
+
+/* ── Ball display ── */
+.ball-stage {
+  display: flex; flex-direction: column; align-items: center; gap: .6rem;
+  padding: .5rem 0;
+}
+.bingo-ball {
+  width: 120px; height: 120px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; opacity: .18; transform: scale(.88);
+  background: radial-gradient(circle at 38% 32%, #555, #222);
+  box-shadow: inset -6px -8px 18px rgba(0,0,0,.55), inset 3px 4px 10px rgba(255,255,255,.12);
+  transition: opacity .3s;
+}
+.bingo-ball.active {
+  opacity: 1; transform: scale(1);
+  animation: ballDrop .55s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes ballDrop {
+  0%  { opacity: 0; transform: translateY(-60px) rotate(-25deg) scale(.8) }
+  65% { opacity: 1; transform: translateY(5px) rotate(6deg) scale(1.05) }
+  82% { transform: translateY(-3px) rotate(-2deg) scale(.98) }
+  100%{ opacity: 1; transform: translateY(0) rotate(0deg) scale(1) }
+}
+.ball-stripe { position: absolute; width: 100%; height: 34%; top: 33%; background: rgba(255,255,255,.88) }
+.ball-shine  { position: absolute; top: 12px; left: 18px; width: 26px; height: 16px; background: rgba(255,255,255,.38); border-radius: 50%; transform: rotate(-32deg) }
+.ball-letter { position: absolute; top: 10px; font-family: 'Cinzel', serif; font-weight: 900; font-size: .62rem; color: #111; z-index: 3; letter-spacing: .05em; width: 100%; text-align: center; opacity: 0; transition: opacity .2s }
+.ball-number { position: relative; z-index: 2; font-family: 'Cinzel', serif; font-weight: 900; font-size: 2.4rem; color: #111; line-height: 1; text-shadow: 0 1px 2px rgba(255,255,255,.3); min-width: 2ch; text-align: center }
+
+/* 90-ball colours */
+.bc1{background:radial-gradient(circle at 38% 32%,var(--ball-1l),var(--ball-1))}
+.bc2{background:radial-gradient(circle at 38% 32%,var(--ball-2l),var(--ball-2))}
+.bc3{background:radial-gradient(circle at 38% 32%,var(--ball-3l),var(--ball-3))}
+.bc4{background:radial-gradient(circle at 38% 32%,var(--ball-4l),var(--ball-4))}
+.bc5{background:radial-gradient(circle at 38% 32%,var(--ball-5l),var(--ball-5))}
+.bc6{background:radial-gradient(circle at 38% 32%,var(--ball-6l),var(--ball-6))}
+.bc7{background:radial-gradient(circle at 38% 32%,var(--ball-7l),var(--ball-7))}
+.bc8{background:radial-gradient(circle at 38% 32%,var(--ball-8l),var(--ball-8))}
+.bc9{background:radial-gradient(circle at 38% 32%,var(--ball-9l),var(--ball-9))}
+/* 75-ball colours */
+.bcB{background:radial-gradient(circle at 38% 32%,var(--col-Bl),var(--col-B))}
+.bcI{background:radial-gradient(circle at 38% 32%,var(--col-Il),var(--col-I))}
+.bcN{background:radial-gradient(circle at 38% 32%,var(--col-Nl),var(--col-N))}
+.bcG{background:radial-gradient(circle at 38% 32%,var(--col-Gl),var(--col-G))}
+.bcO{background:radial-gradient(circle at 38% 32%,var(--col-Ol),var(--col-O))}
+
+.call-phrase {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 1.05rem; color: var(--md-gold-lt); text-align: center;
+  min-height: 3rem; display: flex; align-items: center; justify-content: center;
+  line-height: 1.35; padding: 0 .5rem;
+}
+.call-count {
+  font-family: 'Syne Mono', monospace; font-size: .6rem;
+  color: var(--md-muted); text-align: center; letter-spacing: .06em;
+}
+
+/* ── Draw button ── */
+.draw-btn {
+  width: 100%; padding: 1rem;
+  background: linear-gradient(135deg, var(--md-gold-dk), var(--md-gold));
+  color: var(--md-black); border: none; border-radius: var(--md-radius);
+  font-family: 'Cinzel', serif; font-size: .85rem; font-weight: 900;
+  letter-spacing: .18em; text-transform: uppercase;
+  cursor: pointer; transition: opacity .2s, transform .1s;
+  position: relative; overflow: hidden;
+}
+.draw-btn::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,.15) 0%, transparent 60%);
+  pointer-events: none;
+}
+.draw-btn:hover { opacity: .9 }
+.draw-btn:active { transform: scale(.98) }
+.draw-btn:disabled { opacity: .3; cursor: not-allowed }
+
+/* ── Session controls ── */
+.session-actions { display: flex; flex-direction: column; gap: .5rem }
+.btn-start {
+  padding: .7rem 1rem; background: rgba(76,175,122,.15);
+  border: 1px solid var(--md-success); color: var(--md-success);
+  border-radius: var(--md-radius); font-family: 'Cinzel', serif;
+  font-size: .72rem; font-weight: 600; letter-spacing: .12em;
+  cursor: pointer; transition: all .2s; text-transform: uppercase;
+}
+.btn-start:hover { background: rgba(76,175,122,.25) }
+.btn-start:disabled { opacity: .3; cursor: not-allowed }
+.btn-end {
+  padding: .65rem 1rem; background: transparent;
+  border: 1px solid var(--md-border-lt); color: var(--md-muted);
+  border-radius: var(--md-radius); font-family: 'Syne', sans-serif;
+  font-size: .72rem; letter-spacing: .06em;
+  cursor: pointer; transition: all .2s;
+}
+.btn-end:hover { border-color: var(--md-danger); color: var(--md-danger) }
+.btn-end:disabled { opacity: .3; cursor: not-allowed }
+
+/* ── Speech toggle ── */
+.speech-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .5rem 0; border-top: 1px solid var(--md-border);
+  margin-top: .3rem;
+}
+.speech-label { font-family: 'Syne Mono', monospace; font-size: .6rem; letter-spacing: .1em; color: var(--md-muted) }
+.speech-toggle {
+  position: relative; width: 38px; height: 20px;
+  background: var(--md-border-lt); border-radius: 10px;
+  cursor: pointer; transition: background .2s; border: none; padding: 0;
+}
+.speech-toggle.on { background: var(--md-gold) }
+.speech-toggle::after {
+  content: ''; position: absolute;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: var(--md-dark); top: 3px; left: 3px;
+  transition: transform .2s;
+}
+.speech-toggle.on::after { transform: translateX(18px) }
+
+/* ── Pot display ── */
+.pot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .4rem }
+.pot-stat { background: var(--md-panel); border: 1px solid var(--md-border); border-radius: var(--md-radius); padding: .5rem .7rem }
+.pot-stat-label { font-family: 'Syne Mono', monospace; font-size: .5rem; letter-spacing: .2em; text-transform: uppercase; color: var(--md-muted); margin-bottom: .2rem }
+.pot-stat-value { font-family: 'Cinzel', serif; font-size: .9rem; color: var(--md-gold-lt); font-weight: 600 }
+.pot-stat-value.growing { animation: potPulse 2s ease-in-out infinite }
+@keyframes potPulse { 0%,100%{ color: var(--md-gold-lt) } 50%{ color: var(--md-gold) } }
+.pot-stat.full-width { grid-column: 1 / -1 }
+
+/* ── Prize tiers ── */
+.prize-tier {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: .45rem .7rem; background: var(--md-panel);
+  border: 1px solid var(--md-border); border-radius: var(--md-radius);
+  font-size: .72rem; transition: all .3s; margin-bottom: .35rem;
+}
+.prize-tier:last-child { margin-bottom: 0 }
+.prize-tier-name { font-family: 'Syne', sans-serif; font-weight: 500; letter-spacing: .04em; color: var(--md-muted) }
+.prize-tier-amount { font-family: 'Cinzel', serif; font-size: .8rem; color: var(--md-gold-lt) }
+.prize-tier-tick { color: var(--md-success); opacity: 0; transition: opacity .3s; font-size: 1rem }
+.prize-tier.won { border-color: rgba(76,175,122,.4); background: rgba(76,175,122,.06) }
+.prize-tier.won .prize-tier-name { color: var(--md-success) }
+.prize-tier.won .prize-tier-tick { opacity: 1 }
+.prize-tier.won .prize-tier-amount { color: var(--md-success) }
+
+/* ── Right panel ── */
+.right-panel { display: flex; flex-direction: column; gap: 1rem }
+
+/* ── Called board ── */
+.called-board-90 {
+  display: grid; grid-template-columns: repeat(18, 1fr);
+  gap: 2px; padding: .8rem;
+  background: var(--md-surface); border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+}
+.called-board-75 {
+  display: grid; grid-template-columns: repeat(5, 1fr);
+  gap: 4px; padding: .8rem;
+  background: var(--md-surface); border: 1px solid var(--md-border);
+  border-radius: var(--md-radius);
+}
+.board-label {
+  font-family: 'Syne Mono', monospace; font-size: .55rem;
+  letter-spacing: .25em; text-transform: uppercase; color: var(--md-gold-dk);
+  text-align: center; margin-bottom: .5rem;
+  display: flex; align-items: center; justify-content: center; gap: .8rem;
+}
+.board-label::before, .board-label::after {
+  content: ''; flex: 0 0 40px; height: 1px; background: var(--md-border-lt);
+}
+
+/* Board cells */
+.bcell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; font-family: 'Cinzel', serif; font-size: clamp(.45rem, 1.1vw, .7rem);
+  font-weight: 600; border: 1px solid var(--md-border); color: var(--md-muted);
+  background: var(--md-panel); transition: background .25s, color .2s, border-color .2s;
+  line-height: 1;
+}
+.bcell.hit {
+  background: var(--md-gold-dk); border-color: var(--md-gold);
+  color: var(--md-black);
+  animation: bcellPop .35s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes bcellPop {
+  0%  { transform: scale(.7); opacity: .4 }
+  70% { transform: scale(1.18) }
+  100%{ transform: scale(1) }
+}
+.bcell.latest {
+  box-shadow: 0 0 0 2px var(--md-gold), 0 0 12px rgba(201,148,60,.4);
+}
+
+/* 75-ball column headers in board */
+.b75-col-header {
+  text-align: center; font-family: 'Cinzel', serif; font-size: .75rem;
+  font-weight: 900; padding: .3rem 0; letter-spacing: .05em;
+}
+.b75-col-header.hB { color: var(--col-Bl) }
+.b75-col-header.hI { color: var(--col-Il) }
+.b75-col-header.hN { color: var(--col-Nl) }
+.b75-col-header.hG { color: var(--col-Gl) }
+.b75-col-header.hO { color: var(--col-Ol) }
+
+/* ── Recent calls strip ── */
+.recent-strip {
+  display: flex; gap: .4rem; align-items: center;
+  padding: .6rem .8rem; background: var(--md-surface);
+  border: 1px solid var(--md-border); border-radius: var(--md-radius);
+  overflow: hidden; min-height: 2.2rem; flex-wrap: wrap;
+}
+.recent-ball {
+  font-family: 'Cinzel', serif; font-size: .68rem; font-weight: 600;
+  padding: .2rem .45rem; border-radius: 3px;
+  background: var(--md-panel); border: 1px solid var(--md-border-lt);
+  color: var(--md-muted); white-space: nowrap; transition: all .3s;
+}
+.recent-ball.fresh {
+  background: var(--md-gold-dk); border-color: var(--md-gold);
+  color: var(--md-black);
+}
+
+/* ── Winner alert overlay ── */
+#winner-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(10,9,6,.92);
+  display: none; align-items: center; justify-content: center;
+  padding: 1rem;
+}
+#winner-overlay.show { display: flex }
+.winner-card {
+  background: var(--md-surface); border: 1px solid var(--md-gold);
+  border-radius: var(--md-radius); width: 100%; max-width: 480px;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px var(--md-gold-dk), 0 24px 80px rgba(0,0,0,.8), 0 0 60px rgba(201,148,60,.12);
+  animation: overlayIn .4s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes overlayIn {
+  0%  { opacity: 0; transform: scale(.88) translateY(20px) }
+  100%{ opacity: 1; transform: scale(1) translateY(0) }
+}
+.winner-header {
+  background: linear-gradient(135deg, var(--md-gold-dk), rgba(201,148,60,.25));
+  padding: 1.4rem 1.5rem 1rem; border-bottom: 1px solid var(--md-border-lt);
+}
+.winner-eyebrow {
+  font-family: 'Syne Mono', monospace; font-size: .55rem;
+  letter-spacing: .3em; text-transform: uppercase; color: var(--md-gold-dk);
+  margin-bottom: .4rem;
+}
+.winner-name {
+  font-family: 'Cinzel', serif; font-size: 1.5rem; font-weight: 900;
+  color: var(--md-gold-lt); line-height: 1.1;
+}
+.winner-tier {
+  font-family: 'Cormorant Garamond', serif; font-style: italic;
+  font-size: 1.1rem; color: var(--md-cream); margin-top: .3rem;
+}
+.winner-body { padding: 1.2rem 1.5rem }
+.winner-amount {
+  font-family: 'Cinzel', serif; font-size: 2rem; font-weight: 900;
+  color: var(--md-gold); margin-bottom: .3rem; letter-spacing: .04em;
+}
+.winner-ref {
+  font-family: 'Syne Mono', monospace; font-size: .62rem;
+  color: var(--md-muted); letter-spacing: .1em;
+  margin-bottom: 1.1rem;
+}
+/* Mini card preview in winner overlay */
+.winner-card-preview {
+  display: grid; gap: 2px; margin-bottom: 1rem;
+  border: 1px solid var(--md-border-lt); border-radius: 3px; overflow: hidden;
+  background: var(--md-panel);
+}
+.winner-card-preview.mode-90 { grid-template-columns: repeat(9, 1fr) }
+.winner-card-preview.mode-75 { grid-template-columns: repeat(5, 1fr) }
+.wc-cell {
+  aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  font-family: 'Cinzel', serif; font-size: clamp(.38rem, 1.4vw, .6rem); font-weight: 600;
+  color: var(--md-muted); background: var(--md-panel);
+}
+.wc-cell.blank { opacity: .2 }
+.wc-cell.daubed { background: rgba(201,148,60,.25); color: var(--md-gold-lt) }
+.wc-cell.win-cell { background: var(--md-gold-dk); color: var(--md-black); font-weight: 900 }
+.wc-cell.free { background: rgba(122,88,21,.3); color: var(--md-gold-dk); font-size: .38rem; letter-spacing: .02em }
+.winner-actions { display: flex; gap: .7rem }
+.btn-confirm {
+  flex: 1; padding: .85rem 1rem;
+  background: linear-gradient(135deg, #2d7a52, var(--md-success));
+  color: var(--md-black); border: none; border-radius: var(--md-radius);
+  font-family: 'Cinzel', serif; font-size: .8rem; font-weight: 900;
+  letter-spacing: .12em; text-transform: uppercase;
+  cursor: pointer; transition: opacity .2s, transform .1s;
+}
+.btn-confirm:hover { opacity: .88 }
+.btn-confirm:active { transform: scale(.97) }
+.btn-reject {
+  flex: 0 0 auto; padding: .85rem 1.1rem;
+  background: transparent; border: 1px solid var(--md-border-lt);
+  color: var(--md-muted); border-radius: var(--md-radius);
+  font-family: 'Syne', sans-serif; font-size: .78rem; letter-spacing: .06em;
+  cursor: pointer; transition: all .2s;
+}
+.btn-reject:hover { border-color: var(--md-danger); color: var(--md-danger) }
+
+/* ── Toast ── */
+.toast {
+  position: fixed; bottom: 1.5rem; left: 50%; z-index: 200;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--md-surface); border-radius: 50px;
+  padding: .65rem 1.3rem; font-size: .82rem; letter-spacing: .04em;
+  box-shadow: 0 8px 32px rgba(0,0,0,.5);
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+  white-space: nowrap; border: 1px solid var(--md-border);
+  font-family: 'Syne', sans-serif; pointer-events: none;
+}
+.toast.show { transform: translateX(-50%) translateY(0) }
+.toast.success { border-color: var(--md-success); color: var(--md-success) }
+.toast.error   { border-color: var(--md-danger);  color: var(--md-danger) }
+.toast.info    { border-color: var(--md-gold-dk); color: var(--md-gold-lt) }
+
+/* ── Status pill ── */
+.status-pill {
+  display: inline-flex; align-items: center; gap: .4rem;
+  padding: .3rem .75rem; border-radius: 50px;
+  font-family: 'Syne Mono', monospace; font-size: .58rem;
+  letter-spacing: .12em; text-transform: uppercase; border: 1px solid;
+}
+.status-pill.pending { border-color: var(--md-gold-dk); color: var(--md-gold); background: rgba(201,148,60,.08) }
+.status-pill.active  { border-color: var(--md-success);  color: var(--md-success); background: rgba(76,175,122,.08) }
+.status-pill.ended   { border-color: var(--md-border-lt); color: var(--md-muted) }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor }
+.status-dot.blink { animation: dotBlink 1.2s ease-in-out infinite }
+@keyframes dotBlink { 0%,100%{ opacity: 1 } 50%{ opacity: .3 } }
+
+/* ── Mini divider ── */
+.mini-divider {
+  width: 100%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--md-border-lt), transparent);
+  position: relative; display: flex; align-items: center; justify-content: center;
+}
+.mini-divider::after {
+  content: '✦'; position: absolute; font-size: .5rem; color: var(--md-gold-dk);
+  background: var(--md-surface); padding: 0 .5rem;
+}
+
+/* ── Utility ── */
+.hidden { display: none !important }
+</style>
+</head>
+<body>
+
+<!-- ── Setup screen ────────────────────────────────────── -->
+<div class="page">
+  <div id="setup-screen">
+    <div class="brand-mark">✦ MD Works · Community Bingo</div>
+    <div class="setup-title">Caller Screen</div>
+    <p class="setup-sub">Enter the session ID to begin</p>
+    <div class="setup-input-row">
+      <input class="setup-input" id="session-id-input" type="text" placeholder="Session ID" autocomplete="off" spellcheck="false"/>
+      <button class="draw-btn" style="width:auto;padding:.7rem 1.2rem;font-size:.72rem" onclick="loadSession()">Load</button>
+    </div>
+    <div id="setup-error" style="color:var(--md-danger);font-family:'Syne Mono',monospace;font-size:.7rem;min-height:1rem"></div>
+  </div>
+
+<!-- ── Main caller UI (hidden until session loads) ─────── -->
+  <div id="caller-ui" class="hidden">
+
+    <!-- Header -->
+    <div class="caller-header">
+      <div class="header-brand">
+        <span class="brand-mark">✦ Community Bingo</span>
+        <span class="header-title" id="hdr-session-name">—</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:.9rem;flex-wrap:wrap">
+        <div class="header-session">
+          <div id="hdr-session-date"></div>
+          <div id="hdr-session-mode"></div>
+        </div>
+        <div id="status-pill" class="status-pill pending">
+          <span class="status-dot blink"></span>
+          <span id="status-pill-text">Pending</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="caller-grid">
+
+      <!-- ── LEFT PANEL ────────────────────────── -->
+      <div class="left-panel">
+
+        <!-- Ball + draw -->
+        <div class="panel">
+          <div class="panel-label">Current Ball</div>
+          <div class="ball-stage">
+            <div class="bingo-ball" id="main-ball">
+              <div class="ball-stripe"></div>
+              <div class="ball-shine"></div>
+              <span class="ball-letter" id="ball-letter"></span>
+              <span class="ball-number" id="ball-number">—</span>
+            </div>
+            <div class="call-phrase" id="call-phrase">Waiting to start…</div>
+            <div class="call-count" id="call-count"></div>
+          </div>
+          <div class="mini-divider" style="margin:.3rem 0 .8rem"></div>
+          <button class="draw-btn" id="draw-btn" disabled onclick="drawBall()">Draw Ball</button>
+          <div class="speech-row">
+            <span class="speech-label">Read calls aloud</span>
+            <button class="speech-toggle" id="speech-toggle" onclick="toggleSpeech(this)"></button>
+          </div>
+        </div>
+
+        <!-- Session controls -->
+        <div class="panel">
+          <div class="panel-label">Session</div>
+          <div class="session-actions">
+            <button class="btn-start" id="btn-start" onclick="startSession()">Start Session</button>
+            <button class="btn-end"   id="btn-end"   onclick="endSession()" disabled>End Round</button>
+          </div>
+        </div>
+
+        <!-- Pot -->
+        <div class="panel">
+          <div class="panel-label">Pot</div>
+          <div class="pot-grid" id="pot-grid">
+            <div class="pot-stat">
+              <div class="pot-stat-label">Tickets sold</div>
+              <div class="pot-stat-value" id="pot-tickets">—</div>
+            </div>
+            <div class="pot-stat">
+              <div class="pot-stat-label">Total pot</div>
+              <div class="pot-stat-value growing" id="pot-total">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prize tiers -->
+        <div class="panel">
+          <div class="panel-label">Prize Tiers</div>
+          <div id="prize-tiers">
+            <!-- Rendered by JS based on mode -->
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ── RIGHT PANEL ───────────────────────── -->
+      <div class="right-panel">
+
+        <!-- Recent calls strip -->
+        <div>
+          <div class="board-label">Recent Calls</div>
+          <div class="recent-strip" id="recent-strip">
+            <span style="font-family:'Syne Mono',monospace;font-size:.6rem;color:var(--md-muted);letter-spacing:.06em">No balls drawn yet</span>
+          </div>
+        </div>
+
+        <!-- Called board -->
+        <div>
+          <div class="board-label">Called Numbers</div>
+          <div id="called-board-90" class="called-board-90 hidden"></div>
+          <div id="called-board-75" class="called-board-75 hidden"></div>
+        </div>
+
+      </div>
+
+    </div><!-- /caller-grid -->
+  </div><!-- /caller-ui -->
+</div><!-- /page -->
+
+<!-- ── Winner alert overlay ──────────────────────────────── -->
+<div id="winner-overlay">
+  <div class="winner-card">
+    <div class="winner-header">
+      <div class="winner-eyebrow">Claim — Pending Confirmation</div>
+      <div class="winner-name" id="w-player-name">—</div>
+      <div class="winner-tier" id="w-tier-label">—</div>
+    </div>
+    <div class="winner-body">
+      <div class="winner-amount" id="w-amount">—</div>
+      <div class="winner-ref" id="w-ref">Ref: —</div>
+      <div id="w-card-preview" class="winner-card-preview"></div>
+      <div class="winner-actions">
+        <button class="btn-confirm" onclick="confirmWinner()">Confirm Win</button>
+        <button class="btn-reject"  onclick="rejectWinner()">Reject</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast ── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Community Bingo — Caller Screen
+// MD Works · Morney Deetlefs · mdworks.dev
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ── Config ───────────────────────────────────────────────────────────────────
+
+const API_BASE = 'https://community-bingo.YOUR_SUBDOMAIN.workers.dev'; // ← update after deploy
+
+// ── State ────────────────────────────────────────────────────────────────────
+
+let session      = null;   // full session object from Worker
+let calledNums   = new Set();
+let latestNum    = null;
+let speechOn     = true;
+let pollHandle   = null;
+let pendingWinner = null;  // { ref, player_name, tier, ticket_id, card_index, prize_amount }
+let wonTiers     = new Set();
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const $ = id => document.getElementById(id);
+
+function fmt(cents) {
+  // Format cents as "R 50.00"
+  return 'R ' + (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function tierLabel(tier, mode) {
+  const map = {
+    one_line:   'One Line',
+    two_lines:  'Two Lines',
+    full_house: 'Full House',
+    any_line:   'Any Line',
+    blackout:   'Blackout',
+  };
+  return map[tier] || tier;
+}
+
+function ballClass(n, mode) {
+  if (mode === '75') {
+    const letter = n <= 15 ? 'B' : n <= 30 ? 'I' : n <= 45 ? 'N' : n <= 60 ? 'G' : 'O';
+    return 'bc' + letter;
+  }
+  return 'bc' + Math.ceil(n / 10);
+}
+
+let toastTimer = null;
+function toast(msg, type = 'info', dur = 3500) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast' }, dur);
+}
+
+// ── Session load ─────────────────────────────────────────────────────────────
+
+async function loadSession() {
+  const id = $('session-id-input').value.trim();
+  if (!id) { $('setup-error').textContent = 'Enter a session ID'; return; }
+
+  $('setup-error').textContent = '';
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${id}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Failed to load session');
+    initSession(data);
+  } catch (e) {
+    $('setup-error').textContent = e.message;
+  }
+}
+
+$('session-id-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadSession(); });
+
+function initSession(data) {
+  session = data;
+  $('setup-screen').classList.add('hidden');
+  $('caller-ui').classList.remove('hidden');
+
+  // Header
+  $('hdr-session-name').textContent = data.name;
+  $('hdr-session-date').textContent = data.date;
+  $('hdr-session-mode').textContent = data.mode === '90' ? '90-ball UK/SA' : '75-ball US';
+
+  // Called numbers from D1 (reconnect support)
+  calledNums = new Set((data.called_numbers || []).map(r => r.number));
+
+  // Build boards
+  buildBoard(data.mode);
+  refreshBoard();
+
+  // Build prize tiers
+  buildPrizeTiers(data);
+
+  // Apply existing pot
+  if (data.kv?.pot) applyPot(data.kv.pot);
+
+  // Apply existing winners
+  if (data.winners) data.winners.forEach(w => { if (w.validated === 1) wonTiers.add(w.prize_tier); });
+  refreshPrizeTiers();
+
+  // Status
+  applyStatus(data.status);
+
+  // Latest call (reconnect)
+  if (data.kv?.latest) {
+    const l = data.kv.latest;
+    latestNum = l.number;
+    showBall(l.number, l.call, data.mode);
+    updateCallCount(l.total_called, data.mode);
+  }
+
+  // Start polling
+  startPolling();
+}
+
+// ── Status management ─────────────────────────────────────────────────────────
+
+function applyStatus(status) {
+  const pill = $('status-pill');
+  const text = $('status-pill-text');
+  const dot  = pill.querySelector('.status-dot');
+
+  pill.className = 'status-pill ' + status;
+  text.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+  dot.className = 'status-dot' + (status === 'active' ? ' blink' : '');
+
+  $('draw-btn').disabled  = status !== 'active';
+  $('btn-start').disabled = status !== 'pending';
+  $('btn-end').disabled   = status !== 'active';
+
+  if (status === 'ended') {
+    stopPolling();
+    $('call-phrase').textContent = 'Session ended';
+  }
+}
+
+// ── Board builder ─────────────────────────────────────────────────────────────
+
+function buildBoard(mode) {
+  if (mode === '90') {
+    const board = $('called-board-90');
+    board.classList.remove('hidden');
+    $('called-board-75').classList.add('hidden');
+    board.innerHTML = '';
+    for (let n = 1; n <= 90; n++) {
+      const d = document.createElement('div');
+      d.className = 'bcell';
+      d.id = 'bc' + n;
+      d.textContent = n;
+      board.appendChild(d);
+    }
+  } else {
+    const board = $('called-board-75');
+    board.classList.remove('hidden');
+    $('called-board-90').classList.add('hidden');
+    board.innerHTML = '';
+    const letters = ['B','I','N','G','O'];
+    // Headers
+    letters.forEach(l => {
+      const h = document.createElement('div');
+      h.className = 'b75-col-header h' + l;
+      h.textContent = l;
+      board.appendChild(h);
+    });
+    // Numbers: B=1-15, I=16-30, N=31-45, G=46-60, O=61-75, 5 rows
+    for (let row = 0; row < 15; row++) {
+      for (let col = 0; col < 5; col++) {
+        const n = col * 15 + row + 1;
+        const d = document.createElement('div');
+        d.className = 'bcell';
+        d.id = 'bc' + n;
+        d.textContent = n;
+        board.appendChild(d);
+      }
+    }
+  }
+}
+
+function refreshBoard() {
+  calledNums.forEach(n => {
+    const el = $('bc' + n);
+    if (el) {
+      el.classList.add('hit');
+      if (n === latestNum) el.classList.add('latest');
+      else el.classList.remove('latest');
+    }
+  });
+}
+
+// ── Prize tiers builder ───────────────────────────────────────────────────────
+
+let prizeTierDefs = []; // [{ tier, label, pct }]
+
+function buildPrizeTiers(data) {
+  prizeTierDefs = [];
+  if (data.mode === '90') {
+    if (data.pct_one_line)  prizeTierDefs.push({ tier: 'one_line',   label: 'One Line',   pct: data.pct_one_line });
+    if (data.pct_two_lines) prizeTierDefs.push({ tier: 'two_lines',  label: 'Two Lines',  pct: data.pct_two_lines });
+    if (data.pct_full_house)prizeTierDefs.push({ tier: 'full_house', label: 'Full House', pct: data.pct_full_house });
+  } else {
+    if (data.pct_any_line)  prizeTierDefs.push({ tier: 'any_line',   label: 'Any Line',   pct: data.pct_any_line });
+    if (data.pct_full_house)prizeTierDefs.push({ tier: 'full_house', label: 'Full House', pct: data.pct_full_house });
+  }
+  renderPrizeTiers(0); // start at 0 pot
+}
+
+function renderPrizeTiers(potTotal) {
+  const container = $('prize-tiers');
+  container.innerHTML = '';
+  prizeTierDefs.forEach(({ tier, label, pct }) => {
+    const amount = Math.floor(potTotal * pct / 100);
+    const won    = wonTiers.has(tier);
+    const el = document.createElement('div');
+    el.className = 'prize-tier' + (won ? ' won' : '');
+    el.id = 'tier-' + tier;
+    el.innerHTML = `
+      <span class="prize-tier-name">${label}</span>
+      <span class="prize-tier-amount" id="tier-amt-${tier}">${fmt(amount)}</span>
+      <span class="prize-tier-tick">✓</span>
+    `;
+    container.appendChild(el);
+  });
+}
+
+function refreshPrizeTiers() {
+  wonTiers.forEach(tier => {
+    const el = $('tier-' + tier);
+    if (el) el.classList.add('won');
+  });
+}
+
+// ── Pot display ───────────────────────────────────────────────────────────────
+
+function applyPot(pot) {
+  $('pot-tickets').textContent = pot.tickets_sold ?? '—';
+  $('pot-total').textContent   = pot.pot_total != null ? fmt(pot.pot_total) : '—';
+  $('pot-total').classList.toggle('growing', !pot.locked);
+  // Update prize tier amounts
+  prizeTierDefs.forEach(({ tier, pct }) => {
+    const el = $('tier-amt-' + tier);
+    if (el) el.textContent = fmt(Math.floor((pot.pot_total || 0) * pct / 100));
+  });
+}
+
+// ── Ball display ──────────────────────────────────────────────────────────────
+
+function showBall(n, call, mode) {
+  const ball = $('main-ball');
+  // Reset then re-trigger animation
+  ball.className = 'bingo-ball';
+  void ball.offsetWidth; // reflow
+
+  // Colour class
+  const cls = ballClass(n, mode);
+  ball.classList.add(cls, 'active');
+
+  // Letter (75-ball only)
+  const letterEl = $('ball-letter');
+  if (mode === '75') {
+    const letter = n <= 15 ? 'B' : n <= 30 ? 'I' : n <= 45 ? 'N' : n <= 60 ? 'G' : 'O';
+    letterEl.textContent = letter;
+    letterEl.style.opacity = '1';
+  } else {
+    letterEl.style.opacity = '0';
+  }
+
+  $('ball-number').textContent = n;
+  $('call-phrase').textContent = call;
+
+  // Board: remove previous latest, add new
+  document.querySelectorAll('.bcell.latest').forEach(el => el.classList.remove('latest'));
+  const bcell = $('bc' + n);
+  if (bcell) {
+    bcell.classList.add('hit', 'latest');
+    bcell.style.animation = 'none';
+    void bcell.offsetWidth;
+    bcell.style.animation = '';
+  }
+
+  // Recent strip
+  updateRecentStrip(n, mode);
+
+  // Speech
+  if (speechOn && 'speechSynthesis' in window) speakCall(call, mode);
+}
+
+function updateCallCount(total, mode) {
+  const max = mode === '90' ? 90 : 75;
+  $('call-count').textContent = `${total} of ${max} called · ${max - total} remaining`;
+}
+
+// ── Recent calls strip ────────────────────────────────────────────────────────
+
+const recentNums = []; // newest first, max 10
+
+function updateRecentStrip(n, mode) {
+  // Remove if already present (reconnect safety)
+  const idx = recentNums.indexOf(n);
+  if (idx > -1) recentNums.splice(idx, 1);
+  recentNums.unshift(n);
+  if (recentNums.length > 12) recentNums.pop();
+
+  const strip = $('recent-strip');
+  strip.innerHTML = '';
+  recentNums.forEach((num, i) => {
+    const el = document.createElement('span');
+    el.className = 'recent-ball' + (i === 0 ? ' fresh' : '');
+    const letter = mode === '75'
+      ? (num <= 15 ? 'B' : num <= 30 ? 'I' : num <= 45 ? 'N' : num <= 60 ? 'G' : 'O') + '-'
+      : '';
+    el.textContent = letter + num;
+    strip.appendChild(el);
+  });
+}
+
+// ── Speech synthesis ──────────────────────────────────────────────────────────
+
+function toggleSpeech(btn) {
+  speechOn = !speechOn;
+  btn.classList.toggle('on', speechOn);
+  toast(speechOn ? 'Voice calls on' : 'Voice calls off', 'info', 1800);
+}
+
+function speakCall(call, mode) {
+  window.speechSynthesis.cancel();
+  // For 90-ball: speak the full rhyme twice (traditional bingo style)
+  // e.g. "Two fat ladies — eighty-eight — eighty-eight!"
+  const text = mode === '90' ? `${call}! ${call}!` : call;
+  const utt  = new SpeechSynthesisUtterance(text);
+  utt.rate   = 0.88;
+  utt.pitch  = 1.05;
+  // Prefer a local voice if available
+  const voices = window.speechSynthesis.getVoices();
+  const pref   = voices.find(v => v.lang.startsWith('en') && v.localService);
+  if (pref) utt.voice = pref;
+  window.speechSynthesis.speak(utt);
+}
+
+// Voices load async in some browsers
+window.speechSynthesis.onvoiceschanged = () => {};
+
+// ── Session actions ───────────────────────────────────────────────────────────
+
+async function startSession() {
+  if (!session) return;
+  $('btn-start').disabled = true;
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${session.id}/start`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    session.status = 'active';
+    if (data.pot_locked_at) session.pot_locked_at = data.pot_locked_at;
+    applyStatus('active');
+    applyPot({ locked: true, tickets_sold: $('pot-tickets').textContent, pot_total: data.pot_total || 0, prizes: {} });
+    toast('Session started — pot locked', 'success');
+    $('call-phrase').textContent = 'Ready to draw!';
+  } catch (e) {
+    toast(e.message, 'error');
+    $('btn-start').disabled = false;
+  }
+}
+
+async function drawBall() {
+  if (!session) return;
+  $('draw-btn').disabled = true;
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${session.id}/draw`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    calledNums.add(data.number);
+    latestNum = data.number;
+    showBall(data.number, data.call, session.mode);
+    updateCallCount(data.total_called, session.mode);
+
+    if (data.remaining === 0) {
+      toast('All numbers called!', 'info', 5000);
+      $('draw-btn').disabled = true;
+    } else {
+      $('draw-btn').disabled = false;
+    }
+  } catch (e) {
+    toast(e.message, 'error');
+    $('draw-btn').disabled = false;
+  }
+}
+
+async function endSession() {
+  if (!session || !confirm('End this round? This cannot be undone.')) return;
+  $('btn-end').disabled = true;
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${session.id}/end`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    session.status = 'ended';
+    applyStatus('ended');
+    toast('Round ended', 'info');
+  } catch (e) {
+    toast(e.message, 'error');
+    $('btn-end').disabled = false;
+  }
+}
+
+// ── Winner handling ───────────────────────────────────────────────────────────
+
+function showWinnerOverlay(w, calledSet, mode) {
+  pendingWinner = w;
+
+  $('w-player-name').textContent = w.player_name;
+  $('w-tier-label').textContent  = tierLabel(w.prize_tier);
+  $('w-amount').textContent      = fmt(w.prize_amount);
+  $('w-ref').textContent         = 'Ref: ' + w.ref;
+
+  // Card preview — fetch ticket to render card
+  fetchAndRenderCardPreview(w.ticket_id, w.card_index, calledSet, w.prize_tier, mode);
+
+  $('winner-overlay').classList.add('show');
+
+  // Play a gentle notification sound via AudioContext
+  playWinnerChime();
+}
+
+async function fetchAndRenderCardPreview(ticketId, cardIndex, calledSet, tier, mode) {
+  const preview = $('w-card-preview');
+  preview.innerHTML = '<span style="font-family:\'Syne Mono\',monospace;font-size:.6rem;color:var(--md-muted);padding:.5rem">Loading card…</span>';
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/ticket/${ticketId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    const card = data.ticket.cards[cardIndex];
+    renderCardPreview(preview, card, calledSet, tier, mode);
+  } catch (e) {
+    preview.innerHTML = `<span style="font-family:'Syne Mono',monospace;font-size:.6rem;color:var(--md-muted);padding:.5rem">Could not load card</span>`;
+  }
+}
+
+function renderCardPreview(container, card, calledSet, tier, mode) {
+  container.className = 'winner-card-preview mode-' + mode;
+  container.innerHTML = '';
+
+  const winCells = getWinCells(card, calledSet, tier, mode);
+
+  if (mode === '90') {
+    // 3 rows × 9 cols
+    card.forEach((row, ri) => {
+      row.forEach((val, ci) => {
+        const el = document.createElement('div');
+        if (val === null) {
+          el.className = 'wc-cell blank';
+        } else if (winCells.has(`${ri}-${ci}`)) {
+          el.className = 'wc-cell win-cell';
+          el.textContent = val;
+        } else if (calledSet.has(val)) {
+          el.className = 'wc-cell daubed';
+          el.textContent = val;
+        } else {
+          el.className = 'wc-cell';
+          el.textContent = val;
+        }
+        container.appendChild(el);
+      });
+    });
+  } else {
+    // 5×5, null = FREE centre
+    card.forEach((row, ri) => {
+      row.forEach((val, ci) => {
+        const el = document.createElement('div');
+        if (ri === 2 && ci === 2) {
+          el.className = 'wc-cell free';
+          el.textContent = 'FREE';
+        } else if (winCells.has(`${ri}-${ci}`)) {
+          el.className = 'wc-cell win-cell';
+          el.textContent = val;
+        } else if (val !== null && calledSet.has(val)) {
+          el.className = 'wc-cell daubed';
+          el.textContent = val;
+        } else {
+          el.className = 'wc-cell' + (val === null ? ' blank' : '');
+          el.textContent = val ?? '';
+        }
+        container.appendChild(el);
+      });
+    });
+  }
+}
+
+/** Returns a Set of "row-col" keys for cells that form the winning pattern */
+function getWinCells(card, calledSet, tier, mode) {
+  const daubed = (r, c) => card[r][c] === null || calledSet.has(card[r][c]);
+  const result = new Set();
+
+  if (mode === '90') {
+    const completedRows = card
+      .map((row, ri) => ({ ri, complete: row.every((v, ci) => v === null || calledSet.has(v)) }))
+      .filter(r => r.complete).map(r => r.ri);
+
+    if (tier === 'one_line') {
+      const r = completedRows[0];
+      if (r !== undefined) card[r].forEach((v, ci) => { if (v !== null) result.add(`${r}-${ci}`); });
+    } else if (tier === 'two_lines') {
+      completedRows.slice(0, 2).forEach(r => card[r].forEach((v, ci) => { if (v !== null) result.add(`${r}-${ci}`); }));
+    } else if (tier === 'full_house') {
+      card.forEach((row, ri) => row.forEach((v, ci) => { if (v !== null) result.add(`${ri}-${ci}`); }));
+    }
+  }
+
+  if (mode === '75') {
+    if (tier === 'blackout') {
+      card.forEach((row, ri) => row.forEach((v, ci) => result.add(`${ri}-${ci}`)));
+    } else {
+      // any_line — find the first complete line
+      for (let i = 0; i < 5; i++) {
+        if ([0,1,2,3,4].every(j => daubed(i, j))) { // row i
+          [0,1,2,3,4].forEach(j => result.add(`${i}-${j}`)); break;
+        }
+        if ([0,1,2,3,4].every(j => daubed(j, i))) { // col i
+          [0,1,2,3,4].forEach(j => result.add(`${j}-${i}`)); break;
+        }
+      }
+      if (!result.size && [0,1,2,3,4].every(i => daubed(i, i)))
+        [0,1,2,3,4].forEach(i => result.add(`${i}-${i}`));
+      if (!result.size && [0,1,2,3,4].every(i => daubed(i, 4-i)))
+        [0,1,2,3,4].forEach(i => result.add(`${i}-${4-i}`));
+    }
+  }
+
+  return result;
+}
+
+async function confirmWinner() {
+  if (!pendingWinner) return;
+  $('winner-overlay').classList.remove('show');
+
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/confirm/${pendingWinner.ref}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    wonTiers.add(pendingWinner.prize_tier);
+    refreshPrizeTiers();
+    toast(`${pendingWinner.player_name} wins ${tierLabel(pendingWinner.prize_tier)}!`, 'success', 5000);
+    pendingWinner = null;
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function rejectWinner() {
+  if (!pendingWinner) return;
+  if (!confirm(`Reject claim by ${pendingWinner.player_name}? The game will continue.`)) return;
+  $('winner-overlay').classList.remove('show');
+
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/reject/${pendingWinner.ref}`, { method: 'POST' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    toast('Claim rejected — game continues', 'info', 3000);
+    pendingWinner = null;
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ── Winner chime ──────────────────────────────────────────────────────────────
+
+function playWinnerChime() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const play = (freq, start, dur) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0, ctx.currentTime + start);
+      gain.gain.linearRampToValueAtTime(.35, ctx.currentTime + start + .02);
+      gain.gain.exponentialRampToValueAtTime(.001, ctx.currentTime + start + dur);
+      osc.start(ctx.currentTime + start);
+      osc.stop(ctx.currentTime + start + dur);
+    };
+    play(523, 0,    .5);  // C5
+    play(659, .18,  .5);  // E5
+    play(784, .36,  .7);  // G5
+    play(1047,.55, 1.0);  // C6
+  } catch (e) { /* AudioContext not available */ }
+}
+
+// ── KV polling ────────────────────────────────────────────────────────────────
+
+let lastWinnerRef   = null; // prevent re-showing same pending winner
+let lastWinnerValid = null;
+
+function startPolling() {
+  if (pollHandle) clearInterval(pollHandle);
+  pollHandle = setInterval(pollKV, 2500);
+}
+
+function stopPolling() {
+  if (pollHandle) { clearInterval(pollHandle); pollHandle = null; }
+}
+
+async function pollKV() {
+  if (!session) return;
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${session.id}`);
+    if (!res.ok) return;
+    const data = await res.json();
+
+    // Pot updates (while pending)
+    if (session.status === 'pending' && data.kv?.pot) applyPot(data.kv.pot);
+
+    // Status changes from external source (e.g. index.html starting session)
+    if (data.status !== session.status) {
+      session.status = data.status;
+      applyStatus(data.status);
+    }
+
+    // Pending winner alert
+    const w = data.kv?.winner;
+    if (w && w.validated === 0 && w.ref !== lastWinnerRef) {
+      lastWinnerRef   = w.ref;
+      lastWinnerValid = 0;
+      showWinnerOverlay(w, calledNums, session.mode);
+    }
+
+    // Confirmed winner (from another source — keep won tiers in sync)
+    if (w && w.validated === 1 && !wonTiers.has(w.prize_tier)) {
+      wonTiers.add(w.prize_tier);
+      refreshPrizeTiers();
+    }
+
+  } catch (e) { /* network blip — ignore */ }
+}
+
+// ── Speech synthesis voices init ──────────────────────────────────────────────
+
+// Pre-load voices (Chrome lazy-loads them)
+if ('speechSynthesis' in window) {
+  window.speechSynthesis.getVoices();
+  $('speech-toggle').classList.add('on');
+}
+</script>
+
+<footer style="text-align:center;padding:2rem;border-top:1px solid var(--md-border);margin-top:2rem;position:relative;z-index:1">
+  <div style="font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.22em;color:var(--md-gold-dk)">✦ MD Works ✦</div>
+  <div style="font-family:'Syne Mono',monospace;font-size:.58rem;color:var(--md-muted);letter-spacing:.12em;margin-top:.3rem">Morney Deetlefs · South Africa</div>
+</footer>
+
+</body>
+</html>

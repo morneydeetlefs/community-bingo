@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Organiser ✦ Community Bingo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@1,300;1,400&family=Raleway:wght@300;400;500&family=Syne:wght@400;500;600&family=Syne+Mono&display=swap" rel="stylesheet"/>
+<style>
+/* ══════════════════════════════════════════
+   MD WORKS — COMMUNITY BINGO — ADMIN DASHBOARD
+   index.html · Morney Deetlefs · mdworks.dev
+══════════════════════════════════════════ */
+:root {
+  --md-black:     #0a0906;
+  --md-dark:      #110e09;
+  --md-surface:   #1a1610;
+  --md-panel:     #211c14;
+  --md-border:    #2c2619;
+  --md-border-lt: #3d3526;
+  --md-gold-dk:   #7a5815;
+  --md-gold:      #c9943c;
+  --md-gold-lt:   #e8c87a;
+  --md-gold-glow: rgba(201,148,60,.10);
+  --md-cream:     #f0e6ce;
+  --md-muted:     #7a6d58;
+  --md-success:   #4caf7a;
+  --md-danger:    #c94c4c;
+  --md-radius:    4px;
+}
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0 }
+body {
+  background: var(--md-dark); color: var(--md-cream);
+  font-family: 'Syne', sans-serif; min-height: 100vh;
+  position: relative; overflow-x: hidden;
+}
+body::before {
+  content:''; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+}
+.page { position:relative; z-index:1; max-width:900px; margin:0 auto; padding:0 1rem 4rem }
+
+/* ── Header ── */
+.site-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:1rem 0 .9rem;
+  border-bottom:1px solid var(--md-border); margin-bottom:1.5rem;
+  flex-wrap:wrap; gap:.6rem;
+}
+.brand { display:flex; align-items:center; gap:.8rem }
+.brand-mark { font-family:'Cinzel',serif; font-size:.62rem; color:var(--md-gold-dk); letter-spacing:.35em }
+.brand-title { font-family:'Cinzel',serif; font-size:1.1rem; font-weight:900; color:var(--md-gold-lt); letter-spacing:.06em }
+.header-sub { font-family:'Cormorant Garamond',serif; font-style:italic; color:var(--md-muted); font-size:.9rem }
+
+/* ── Tabs ── */
+.tabs {
+  display:flex; gap:0; border-bottom:1px solid var(--md-border);
+  margin-bottom:1.5rem; overflow-x:auto;
+}
+.tab {
+  padding:.6rem 1.1rem; font-family:'Cinzel',serif; font-size:.7rem;
+  font-weight:600; letter-spacing:.12em; cursor:pointer; border:none;
+  background:transparent; color:var(--md-muted); text-transform:uppercase;
+  border-bottom:2px solid transparent; transition:all .2s; white-space:nowrap;
+}
+.tab.active { color:var(--md-gold-lt); border-bottom-color:var(--md-gold) }
+.tab:hover:not(.active) { color:var(--md-cream) }
+
+.tab-panel { display:none }
+.tab-panel.active { display:block }
+
+/* ── Panel / card ── */
+.panel {
+  background:var(--md-surface); border:1px solid var(--md-border);
+  border-radius:var(--md-radius); padding:1.4rem 1.3rem;
+  position:relative; overflow:hidden; margin-bottom:1rem;
+}
+.panel::before {
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:linear-gradient(160deg,var(--md-gold-glow) 0%,transparent 55%);
+}
+.panel-title {
+  font-family:'Cinzel',serif; font-size:.85rem; font-weight:600;
+  color:var(--md-gold-lt); letter-spacing:.1em; margin-bottom:1rem;
+  display:flex; align-items:center; gap:.7rem;
+}
+.panel-title::after { content:''; flex:1; height:1px; background:var(--md-border) }
+
+/* ── Form elements ── */
+.form-grid { display:grid; grid-template-columns:1fr 1fr; gap:.75rem }
+.form-grid.cols3 { grid-template-columns:1fr 1fr 1fr }
+@media(max-width:560px){ .form-grid,.form-grid.cols3 { grid-template-columns:1fr } }
+.form-group { display:flex; flex-direction:column; gap:.35rem }
+.form-group.span2 { grid-column:1/-1 }
+label {
+  font-family:'Syne Mono',monospace; font-size:.55rem; letter-spacing:.22em;
+  text-transform:uppercase; color:var(--md-gold-dk);
+}
+input[type=text], input[type=number], input[type=date], select, textarea {
+  padding:.6rem .8rem; background:var(--md-panel); border:1px solid var(--md-border-lt);
+  border-radius:var(--md-radius); color:var(--md-cream);
+  font-family:'Syne Mono',monospace; font-size:.78rem; letter-spacing:.04em;
+  outline:none; width:100%; transition:border-color .2s;
+  -webkit-appearance:none;
+}
+input:focus, select:focus, textarea:focus { border-color:var(--md-gold) }
+input::placeholder, textarea::placeholder { color:var(--md-muted) }
+select { cursor:pointer }
+select option { background:var(--md-panel); color:var(--md-cream) }
+
+/* Percentage row */
+.pct-row { display:grid; gap:.5rem }
+.pct-fields { display:flex; gap:.5rem; align-items:flex-end }
+.pct-field { flex:1 }
+.pct-total {
+  font-family:'Syne Mono',monospace; font-size:.65rem; padding:.5rem .7rem;
+  border-radius:var(--md-radius); background:var(--md-panel);
+  border:1px solid var(--md-border-lt); letter-spacing:.04em; min-width:70px; text-align:center;
+}
+.pct-total.ok  { color:var(--md-success); border-color:rgba(76,175,122,.4) }
+.pct-total.bad { color:var(--md-danger);  border-color:rgba(201,76,76,.4) }
+
+/* Ticket price helper */
+.price-hint { font-family:'Syne Mono',monospace; font-size:.58rem; color:var(--md-muted); margin-top:2px }
+
+/* ── Buttons ── */
+.btn {
+  padding:.7rem 1.2rem; border-radius:var(--md-radius); font-family:'Cinzel',serif;
+  font-size:.72rem; font-weight:600; letter-spacing:.14em; text-transform:uppercase;
+  cursor:pointer; transition:opacity .2s, transform .1s; border:none; display:inline-flex;
+  align-items:center; justify-content:center; gap:.5rem;
+}
+.btn:active { transform:scale(.97) }
+.btn:disabled { opacity:.3; cursor:not-allowed }
+.btn-primary {
+  background:linear-gradient(135deg,var(--md-gold-dk),var(--md-gold));
+  color:var(--md-black);
+}
+.btn-primary:hover:not(:disabled) { opacity:.88 }
+.btn-secondary {
+  background:transparent; border:1px solid var(--md-border-lt); color:var(--md-muted);
+}
+.btn-secondary:hover:not(:disabled) { color:var(--md-gold-lt); border-color:var(--md-gold-dk) }
+.btn-success {
+  background:rgba(76,175,122,.15); border:1px solid var(--md-success); color:var(--md-success);
+}
+.btn-success:hover:not(:disabled) { background:rgba(76,175,122,.25) }
+.btn-danger {
+  background:transparent; border:1px solid rgba(201,76,76,.4); color:var(--md-danger);
+}
+.btn-danger:hover:not(:disabled) { background:rgba(201,76,76,.1) }
+.btn-wa {
+  background:#1a7a3a; color:#fff; border:none;
+}
+.btn-wa:hover:not(:disabled) { opacity:.88 }
+.btn-sm { padding:.45rem .8rem; font-size:.62rem; letter-spacing:.1em }
+.btn-full { width:100% }
+
+/* ── Eyebrow / section label ── */
+.eyebrow {
+  font-family:'Syne Mono',monospace; font-size:.54rem; letter-spacing:.28em;
+  text-transform:uppercase; color:var(--md-gold-dk); margin-bottom:.65rem;
+  display:flex; align-items:center; gap:.7rem;
+}
+.eyebrow::after { content:''; flex:0 0 40px; height:1px; background:var(--md-border-lt) }
+
+/* ── Stat strip ── */
+.stat-strip { display:flex; gap:.6rem; flex-wrap:wrap; margin-bottom:1rem }
+.stat-cell {
+  flex:1; min-width:100px; background:var(--md-panel);
+  border:1px solid var(--md-border); border-radius:var(--md-radius);
+  padding:.6rem .9rem;
+}
+.stat-label { font-family:'Syne Mono',monospace; font-size:.48rem; letter-spacing:.2em; text-transform:uppercase; color:var(--md-muted); margin-bottom:2px }
+.stat-value { font-family:'Cinzel',serif; font-size:1rem; color:var(--md-gold-lt); font-weight:600 }
+.stat-value.live { animation:potPulse 2.5s ease-in-out infinite }
+@keyframes potPulse{ 0%,100%{color:var(--md-gold-lt)} 50%{color:var(--md-gold)} }
+
+/* ── Progress bar (ticket cap) ── */
+.cap-bar-wrap { margin:.5rem 0 }
+.cap-bar-track {
+  height:6px; background:var(--md-border); border-radius:3px; overflow:hidden;
+}
+.cap-bar-fill {
+  height:100%; background:linear-gradient(90deg,var(--md-gold-dk),var(--md-gold));
+  border-radius:3px; transition:width .5s ease;
+}
+.cap-bar-label { font-family:'Syne Mono',monospace; font-size:.55rem; color:var(--md-muted); margin-top:3px }
+
+/* ── Ticket list ── */
+.ticket-list { display:flex; flex-direction:column; gap:.5rem }
+.ticket-row {
+  display:flex; align-items:center; gap:.7rem;
+  background:var(--md-panel); border:1px solid var(--md-border);
+  border-radius:var(--md-radius); padding:.55rem .8rem;
+  font-size:.72rem; flex-wrap:wrap;
+}
+.ticket-name { font-family:'Syne',sans-serif; font-weight:500; flex:1; min-width:80px }
+.ticket-phone { font-family:'Syne Mono',monospace; font-size:.6rem; color:var(--md-muted); flex:0 0 auto }
+.ticket-count { font-family:'Syne Mono',monospace; font-size:.6rem; color:var(--md-muted) }
+.ticket-paid-badge {
+  font-family:'Syne Mono',monospace; font-size:.52rem; letter-spacing:.1em;
+  padding:.18rem .5rem; border-radius:50px; border:1px solid;
+  cursor:pointer; transition:all .2s; white-space:nowrap;
+}
+.ticket-paid-badge.paid    { color:var(--md-success); border-color:rgba(76,175,122,.4) }
+.ticket-paid-badge.unpaid  { color:var(--md-danger);  border-color:rgba(201,76,76,.4) }
+.ticket-paid-badge:hover   { opacity:.75 }
+.ticket-actions { display:flex; gap:.4rem; flex-shrink:0 }
+
+/* ── Winners table ── */
+.winners-table { width:100%; border-collapse:collapse; font-size:.72rem }
+.winners-table th {
+  font-family:'Syne Mono',monospace; font-size:.5rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--md-gold-dk); padding:.5rem .7rem;
+  border-bottom:1px solid var(--md-border-lt); text-align:left;
+}
+.winners-table td {
+  padding:.6rem .7rem; border-bottom:1px solid var(--md-border);
+  font-family:'Syne Mono',monospace; font-size:.65rem; color:var(--md-muted);
+}
+.winners-table tr:last-child td { border-bottom:none }
+.winners-table .val { color:var(--md-cream) }
+.winners-table .val-gold { color:var(--md-gold-lt); font-family:'Cinzel',serif }
+.badge-confirmed {
+  display:inline-flex; align-items:center; gap:.3rem;
+  font-size:.52rem; letter-spacing:.1em; padding:.15rem .5rem;
+  border-radius:50px; border:1px solid rgba(76,175,122,.4);
+  color:var(--md-success); white-space:nowrap;
+}
+.badge-pending {
+  color:var(--md-gold-dk); border-color:rgba(201,148,60,.3);
+}
+.badge-rejected { color:var(--md-muted); border-color:var(--md-border-lt) }
+
+/* ── Session selector ── */
+.session-selector {
+  display:flex; gap:.6rem; align-items:stretch; flex-wrap:wrap; margin-bottom:1.2rem;
+}
+.session-selector select { flex:1; min-width:160px }
+
+/* ── Divider ── */
+.divider {
+  width:100%; height:1px; margin:1rem 0;
+  background:linear-gradient(90deg,transparent,var(--md-border-lt),transparent);
+}
+
+/* ── Empty state ── */
+.empty {
+  text-align:center; padding:2rem 1rem;
+  font-family:'Cormorant Garamond',serif; font-style:italic;
+  font-size:.95rem; color:var(--md-muted);
+}
+
+/* ── Toast ── */
+.toast {
+  position:fixed; bottom:1.5rem; left:50%; z-index:200;
+  transform:translateX(-50%) translateY(80px);
+  background:var(--md-surface); border-radius:50px;
+  padding:.6rem 1.3rem; font-size:.8rem; letter-spacing:.04em;
+  box-shadow:0 8px 32px rgba(0,0,0,.5); white-space:nowrap;
+  border:1px solid var(--md-border); font-family:'Syne',sans-serif;
+  transition:transform .35s cubic-bezier(.34,1.56,.64,1); pointer-events:none;
+}
+.toast.show    { transform:translateX(-50%) translateY(0) }
+.toast.success { border-color:var(--md-success); color:var(--md-success) }
+.toast.error   { border-color:var(--md-danger);  color:var(--md-danger) }
+.toast.info    { border-color:var(--md-gold-dk); color:var(--md-gold-lt) }
+
+.hidden { display:none !important }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- ── Header ── -->
+  <header class="site-header">
+    <div class="brand">
+      <span class="brand-mark">✦ MD Works</span>
+      <span class="brand-title">Community Bingo</span>
+    </div>
+    <span class="header-sub">Organiser Dashboard</span>
+  </header>
+
+  <!-- ── Tabs ── -->
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('sessions')">Sessions</button>
+    <button class="tab"        onclick="showTab('tickets')">Tickets</button>
+    <button class="tab"        onclick="showTab('winners')">Winners</button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       TAB: SESSIONS
+  ════════════════════════════════════════ -->
+  <div class="tab-panel active" id="tab-sessions">
+
+    <!-- Create session -->
+    <div class="panel">
+      <div class="panel-title">New Session</div>
+
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Session Name</label>
+          <input type="text" id="s-name" placeholder="e.g. Friday Night Bingo"/>
+        </div>
+        <div class="form-group">
+          <label>Date</label>
+          <input type="date" id="s-date"/>
+        </div>
+        <div class="form-group">
+          <label>Game Mode</label>
+          <select id="s-mode" onchange="onModeChange()">
+            <option value="90">90-ball (UK / SA)</option>
+            <option value="75">75-ball (US)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Ticket Price (cents) <span class="price-hint" id="price-hint">= R 0.00</span></label>
+          <input type="number" id="s-price" placeholder="5000" min="100" step="100" oninput="updatePriceHint()"/>
+        </div>
+        <div class="form-group">
+          <label>Ticket Cap <span style="color:var(--md-muted);font-size:.48rem">(optional)</span></label>
+          <input type="number" id="s-cap" placeholder="Leave blank = unlimited" min="1"/>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 90-ball percentages -->
+      <div id="pcts-90">
+        <div class="eyebrow">Prize Percentages</div>
+        <div class="form-grid cols3">
+          <div class="form-group">
+            <label>One Line %</label>
+            <input type="number" id="pct-one-line" placeholder="20" min="0" max="100" oninput="updatePctTotal('90')"/>
+          </div>
+          <div class="form-group">
+            <label>Two Lines %</label>
+            <input type="number" id="pct-two-lines" placeholder="30" min="0" max="100" oninput="updatePctTotal('90')"/>
+          </div>
+          <div class="form-group">
+            <label>Full House %</label>
+            <input type="number" id="pct-full-house-90" placeholder="40" min="0" max="100" oninput="updatePctTotal('90')"/>
+          </div>
+          <div class="form-group">
+            <label>Organiser %</label>
+            <input type="number" id="pct-org-90" placeholder="10" min="0" max="100" oninput="updatePctTotal('90')"/>
+          </div>
+          <div class="form-group" style="justify-content:flex-end;padding-bottom:0">
+            <label>Total</label>
+            <div class="pct-total" id="pct-total-90">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 75-ball percentages -->
+      <div id="pcts-75" class="hidden">
+        <div class="eyebrow">Prize Percentages</div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Any Line %</label>
+            <input type="number" id="pct-any-line" placeholder="40" min="0" max="100" oninput="updatePctTotal('75')"/>
+          </div>
+          <div class="form-group">
+            <label>Full House %</label>
+            <input type="number" id="pct-full-house-75" placeholder="50" min="0" max="100" oninput="updatePctTotal('75')"/>
+          </div>
+          <div class="form-group">
+            <label>Organiser %</label>
+            <input type="number" id="pct-org-75" placeholder="10" min="0" max="100" oninput="updatePctTotal('75')"/>
+          </div>
+          <div class="form-group" style="justify-content:flex-end;padding-bottom:0">
+            <label>Total</label>
+            <div class="pct-total" id="pct-total-75">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:1rem">
+        <button class="btn btn-primary" onclick="createSession()">Create Session</button>
+      </div>
+    </div>
+
+    <!-- Session list -->
+    <div class="panel">
+      <div class="panel-title">Sessions</div>
+      <div id="session-list">
+        <div class="empty">No sessions yet — create one above</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-sessions -->
+
+  <!-- ════════════════════════════════════════
+       TAB: TICKETS
+  ════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-tickets">
+
+    <!-- Session selector -->
+    <div class="session-selector">
+      <select id="ticket-session-select" onchange="loadTicketView()">
+        <option value="">Select a session…</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="loadTicketView()">Refresh</button>
+    </div>
+
+    <!-- Live pot / stats -->
+    <div id="ticket-stats" class="hidden">
+      <div class="stat-strip" id="ticket-stat-strip"></div>
+      <div id="cap-bar-wrap" class="hidden">
+        <div class="cap-bar-wrap">
+          <div class="cap-bar-track"><div class="cap-bar-fill" id="cap-bar-fill"></div></div>
+          <div class="cap-bar-label" id="cap-bar-label"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add ticket form -->
+    <div class="panel" id="add-ticket-panel" style="display:none">
+      <div class="panel-title">Add Ticket</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Player Name</label>
+          <input type="text" id="t-name" placeholder="Full name"/>
+        </div>
+        <div class="form-group">
+          <label>Phone <span style="color:var(--md-muted);font-size:.48rem">(optional, for WhatsApp)</span></label>
+          <input type="text" id="t-phone" placeholder="e.g. 0831234567"/>
+        </div>
+        <div class="form-group">
+          <label>Cards</label>
+          <select id="t-cards">
+            <option value="1">1 card</option>
+            <option value="2">2 cards</option>
+            <option value="3">3 cards</option>
+            <option value="4">4 cards</option>
+            <option value="6">6 cards</option>
+          </select>
+        </div>
+      </div>
+      <div style="margin-top:.8rem;display:flex;gap:.6rem;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="addTicket()">Add Ticket</button>
+      </div>
+    </div>
+
+    <!-- Ticket list -->
+    <div class="panel">
+      <div class="panel-title">Ticket List</div>
+      <div class="ticket-list" id="ticket-list">
+        <div class="empty">Select a session to see tickets</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-tickets -->
+
+  <!-- ════════════════════════════════════════
+       TAB: WINNERS
+  ════════════════════════════════════════ -->
+  <div class="tab-panel" id="tab-winners">
+
+    <div class="session-selector">
+      <select id="winners-session-select" onchange="loadWinnersView()">
+        <option value="">Select a session…</option>
+      </select>
+      <button class="btn btn-secondary btn-sm" onclick="loadWinnersView()">Refresh</button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Winners Log</div>
+      <div id="winners-body">
+        <div class="empty">Select a session to see winners</div>
+      </div>
+    </div>
+
+  </div><!-- /tab-winners -->
+
+</div><!-- /page -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Community Bingo — index.html (Organiser Dashboard)
+// MD Works · Morney Deetlefs · mdworks.dev
+// ─────────────────────────────────────────────────────────────────────────────
+
+const API_BASE = 'https://community-bingo.morneydeetlefs.workers.dev'; // ← update after deploy
+const PLAY_BASE = 'https://play.mdworks.dev/bingo/play.html';           // ← update after deploy
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+let sessions       = [];   // loaded from localStorage cache + API
+let ticketPollHandle = null;
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const $ = id => document.getElementById(id);
+
+function fmt(cents) {
+  return 'R ' + (cents / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function tierLabel(tier) {
+  return { one_line:'One Line', two_lines:'Two Lines', full_house:'Full House',
+           any_line:'Any Line', blackout:'Blackout' }[tier] || tier;
+}
+
+function statusLabel(s) {
+  return { pending:'Pending', active:'Active', ended:'Ended' }[s] || s;
+}
+
+function cleanPhone(p) {
+  // Strip non-digits; convert 0XXXXXXXXX → 27XXXXXXXXX (SA)
+  const d = p.replace(/\D/g, '');
+  if (d.startsWith('0') && d.length === 10) return '27' + d.slice(1);
+  return d;
+}
+
+function playUrl(ticketIds) {
+  return PLAY_BASE + '?' + ticketIds.map(id => `ticket=${id}`).join('&');
+}
+
+let toastTimer = null;
+function toast(msg, type = 'info', dur = 3500) {
+  const el = $('toast');
+  el.textContent = msg; el.className = 'toast show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = 'toast' }, dur);
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const panels = ['sessions','tickets','winners'];
+    t.classList.toggle('active', panels[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  $(`tab-${name}`).classList.add('active');
+  if (name === 'tickets') populateSessionSelects();
+  if (name === 'winners') populateSessionSelects();
+}
+
+// ── Session form ──────────────────────────────────────────────────────────────
+
+function onModeChange() {
+  const mode = $('s-mode').value;
+  $('pcts-90').classList.toggle('hidden', mode !== '90');
+  $('pcts-75').classList.toggle('hidden', mode !== '75');
+}
+
+function updatePriceHint() {
+  const cents = parseInt($('s-price').value, 10) || 0;
+  $('price-hint').textContent = '= ' + fmt(cents);
+}
+
+function updatePctTotal(mode) {
+  const fields = mode === '90'
+    ? ['pct-one-line', 'pct-two-lines', 'pct-full-house-90', 'pct-org-90']
+    : ['pct-any-line', 'pct-full-house-75', 'pct-org-75'];
+  const total = fields.reduce((sum, id) => sum + (parseInt($(id).value, 10) || 0), 0);
+  const el    = $(`pct-total-${mode}`);
+  el.textContent = total + '%';
+  el.className   = 'pct-total ' + (total === 100 ? 'ok' : 'bad');
+  return total;
+}
+
+async function createSession() {
+  const mode = $('s-mode').value;
+  const name = $('s-name').value.trim();
+  const date = $('s-date').value;
+  const price = parseInt($('s-price').value, 10) || 0;
+  const cap   = parseInt($('s-cap').value, 10)   || null;
+
+  if (!name)    { toast('Enter a session name', 'error'); return; }
+  if (!date)    { toast('Select a date', 'error'); return; }
+  if (!price)   { toast('Enter a ticket price', 'error'); return; }
+  if (updatePctTotal(mode) !== 100) {
+    toast('Percentages must total 100%', 'error'); return;
+  }
+
+  const body = {
+    name, date, mode, ticket_price: price, ticket_cap: cap,
+    pct_organiser: parseInt(mode === '90' ? $('pct-org-90').value : $('pct-org-75').value, 10),
+    pct_full_house: parseInt(mode === '90' ? $('pct-full-house-90').value : $('pct-full-house-75').value, 10),
+    ...(mode === '90' ? {
+      pct_one_line:  parseInt($('pct-one-line').value, 10),
+      pct_two_lines: parseInt($('pct-two-lines').value, 10),
+    } : {
+      pct_any_line: parseInt($('pct-any-line').value, 10),
+    }),
+  };
+
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session`, {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    toast(`Session created — ID: ${data.id}`, 'success', 6000);
+    saveSessionLocally({ id: data.id, ...body, status:'pending' });
+    renderSessionList();
+    populateSessionSelects();
+
+    // Clear form
+    $('s-name').value = ''; $('s-price').value = ''; $('s-cap').value = '';
+    $('price-hint').textContent = '= R 0.00';
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+// ── Session storage (localStorage cache) ─────────────────────────────────────
+
+function saveSessionLocally(session) {
+  sessions = sessions.filter(s => s.id !== session.id);
+  sessions.unshift(session);
+  localStorage.setItem('bingo-sessions', JSON.stringify(sessions));
+}
+
+function loadSessionsLocally() {
+  try { sessions = JSON.parse(localStorage.getItem('bingo-sessions') || '[]'); }
+  catch { sessions = []; }
+}
+
+function renderSessionList() {
+  const list = $('session-list');
+  if (!sessions.length) {
+    list.innerHTML = '<div class="empty">No sessions yet — create one above</div>';
+    return;
+  }
+  list.innerHTML = sessions.map(s => `
+    <div class="ticket-row" style="flex-wrap:wrap;gap:.5rem;margin-bottom:.4rem">
+      <div style="flex:1;min-width:140px">
+        <div style="font-family:'Cinzel',serif;font-size:.82rem;color:var(--md-gold-lt)">${s.name}</div>
+        <div style="font-family:'Syne Mono',monospace;font-size:.58rem;color:var(--md-muted);margin-top:2px">
+          ${s.date} · ${s.mode === '90' ? '90-ball' : '75-ball'} · ${fmt(s.ticket_price)}
+        </div>
+      </div>
+      <span style="font-family:'Syne Mono',monospace;font-size:.55rem;padding:.2rem .55rem;border-radius:50px;border:1px solid var(--md-border-lt);color:var(--md-muted)">
+        ${statusLabel(s.status)}
+      </span>
+      <div style="display:flex;gap:.4rem">
+        <button class="btn btn-secondary btn-sm" onclick="copyId('${s.id}')">Copy ID</button>
+        <button class="btn btn-secondary btn-sm" onclick="openCaller('${s.id}')">Caller →</button>
+      </div>
+      <div style="font-family:'Syne Mono',monospace;font-size:.5rem;color:var(--md-muted);width:100%;word-break:break-all">
+        ${s.id}
+      </div>
+    </div>
+  `).join('');
+}
+
+function copyId(id) {
+  navigator.clipboard.writeText(id).then(() => toast('Session ID copied', 'success', 2000));
+}
+
+function openCaller(id) {
+  window.open(`caller.html?session=${id}`, '_blank');
+}
+
+// ── Session selects (shared across tabs) ──────────────────────────────────────
+
+function populateSessionSelects() {
+  ['ticket-session-select', 'winners-session-select'].forEach(id => {
+    const sel = $(id);
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">Select a session…</option>';
+    sessions.forEach(s => {
+      sel.innerHTML += `<option value="${s.id}" ${s.id===cur?'selected':''}>${s.name} — ${s.date}</option>`;
+    });
+  });
+}
+
+// ── TICKETS TAB ───────────────────────────────────────────────────────────────
+
+async function loadTicketView() {
+  const sessionId = $('ticket-session-select').value;
+  if (!sessionId) {
+    $('ticket-stats').classList.add('hidden');
+    $('add-ticket-panel').style.display = 'none';
+    $('ticket-list').innerHTML = '<div class="empty">Select a session to see tickets</div>';
+    return;
+  }
+
+  $('add-ticket-panel').style.display = 'block';
+
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${sessionId}`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    // Update local cache
+    saveSessionLocally({ ...sessions.find(s=>s.id===sessionId)||{}, ...data });
+    renderSessionList();
+
+    renderTicketStats(data);
+    renderTicketList(data, sessionId);
+
+    // Start/refresh pot polling
+    if (ticketPollHandle) clearInterval(ticketPollHandle);
+    if (data.status === 'pending') {
+      ticketPollHandle = setInterval(() => loadTicketView(), 8000);
+    }
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function renderTicketStats(data) {
+  const strip  = $('ticket-stat-strip');
+  const pot    = data.kv?.pot;
+  const stats  = $('ticket-stats');
+  stats.classList.remove('hidden');
+
+  const tickets_sold  = pot?.tickets_sold  ?? 0;
+  const pot_total     = pot?.pot_total     ?? 0;
+  const locked        = pot?.locked        ?? false;
+
+  // Prize amounts
+  const prizes = pot?.prizes || {};
+
+  let cells = `
+    <div class="stat-cell">
+      <div class="stat-label">Status</div>
+      <div class="stat-value">${statusLabel(data.status)}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Tickets Sold</div>
+      <div class="stat-value ${data.status==='pending'?'live':''}">${tickets_sold}</div>
+    </div>
+    <div class="stat-cell">
+      <div class="stat-label">Pot Total</div>
+      <div class="stat-value ${data.status==='pending'&&!locked?'live':''}">${fmt(pot_total)}</div>
+    </div>`;
+
+  strip.innerHTML = cells;
+
+  // Cap progress bar
+  const capWrap = $('cap-bar-wrap');
+  if (data.ticket_cap) {
+    capWrap.classList.remove('hidden');
+    const pct = Math.min(100, (tickets_sold / data.ticket_cap) * 100);
+    $('cap-bar-fill').style.width  = pct + '%';
+    $('cap-bar-label').textContent = `${tickets_sold} / ${data.ticket_cap} tickets sold`;
+  } else {
+    capWrap.classList.add('hidden');
+  }
+}
+
+async function renderTicketList(sessionData, sessionId) {
+  const tickets = sessionData.kv; // We need to fetch tickets separately
+  // Fetch all tickets for session from a helper — Worker returns tickets via session endpoint
+  // For now, we re-fetch the full session which includes called_numbers; tickets are in D1.
+  // TODO: add GET /bingo/session/:id/tickets endpoint if list grows large.
+  // For now, organiser can see IDs from local state + WA links generated at creation time.
+
+  const list = $('ticket-list');
+  const localTickets = JSON.parse(localStorage.getItem(`bingo-tickets-${sessionId}`) || '[]');
+
+  if (!localTickets.length) {
+    list.innerHTML = '<div class="empty">No tickets yet — add one above</div>';
+    return;
+  }
+
+  list.innerHTML = localTickets.map(t => `
+    <div class="ticket-row" id="trow-${t.id}">
+      <div class="ticket-name">${t.player_name}</div>
+      ${t.player_phone ? `<div class="ticket-phone">${t.player_phone}</div>` : ''}
+      <div class="ticket-count">${t.card_count} card${t.card_count>1?'s':''}</div>
+      <span class="ticket-paid-badge ${t.paid?'paid':'unpaid'}" id="paid-${t.id}"
+            onclick="togglePaid('${t.id}', ${t.paid})">
+        ${t.paid ? '✓ Paid' : 'Unpaid'}
+      </span>
+      <div class="ticket-actions">
+        ${t.player_phone ? `
+          <button class="btn btn-wa btn-sm" onclick="sendWhatsApp('${t.id}', '${t.player_phone}', '${t.player_name}', ${t.card_count}, '${sessionData.name}')">
+            WA
+          </button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="copyPlayUrl('${t.id}')">Link</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addTicket() {
+  const sessionId = $('ticket-session-select').value;
+  if (!sessionId) { toast('Select a session first', 'error'); return; }
+
+  const name  = $('t-name').value.trim();
+  const phone = $('t-phone').value.trim();
+  const count = parseInt($('t-cards').value, 10) || 1;
+
+  if (!name) { toast('Enter a player name', 'error'); return; }
+
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/ticket`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ session_id:sessionId, player_name:name, player_phone:phone||undefined, card_count:count }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    // Save to local cache
+    const localTickets = JSON.parse(localStorage.getItem(`bingo-tickets-${sessionId}`) || '[]');
+    localTickets.unshift({ id:data.id, player_name:name, player_phone:phone||'', card_count:count, paid:false });
+    localStorage.setItem(`bingo-tickets-${sessionId}`, JSON.stringify(localTickets));
+
+    toast(`Ticket added for ${name}`, 'success', 3000);
+    $('t-name').value = ''; $('t-phone').value = '';
+
+    // Auto-send WA if phone provided
+    if (phone) {
+      const session = sessions.find(s => s.id === sessionId);
+      sendWhatsApp(data.id, phone, name, count, session?.name || 'Bingo');
+    }
+
+    await loadTicketView();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+async function togglePaid(ticketId, currentlyPaid) {
+  if (currentlyPaid) { toast('Already marked as paid', 'info', 2000); return; }
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/ticket/${ticketId}/paid`, { method:'PATCH' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    // Update local cache
+    const sessionId = $('ticket-session-select').value;
+    const localTickets = JSON.parse(localStorage.getItem(`bingo-tickets-${sessionId}`) || '[]');
+    const t = localTickets.find(t => t.id === ticketId);
+    if (t) { t.paid = true; localStorage.setItem(`bingo-tickets-${sessionId}`, JSON.stringify(localTickets)); }
+
+    const badge = $(`paid-${ticketId}`);
+    if (badge) { badge.textContent = '✓ Paid'; badge.className = 'ticket-paid-badge paid'; }
+    toast('Marked as paid', 'success', 2000);
+    loadTicketView();
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function sendWhatsApp(ticketId, phone, playerName, cardCount, sessionName) {
+  const url = playUrl([ticketId]);
+  const msg = [
+    `*${sessionName}*`,
+    `----`,
+    `Hi ${playerName}! Your bingo card${cardCount > 1 ? 's are' : ' is'} ready.`,
+    `You have ${cardCount} card${cardCount > 1 ? 's' : ''}.`,
+    `----`,
+    `Tap your link to open your card:`,
+    url,
+  ].join('\n');
+  const cleaned = cleanPhone(phone);
+  window.open(`https://wa.me/${cleaned}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+function copyPlayUrl(ticketId) {
+  const url = playUrl([ticketId]);
+  navigator.clipboard.writeText(url).then(() => toast('Play link copied', 'success', 2000));
+}
+
+// ── WINNERS TAB ───────────────────────────────────────────────────────────────
+
+async function loadWinnersView() {
+  const sessionId = $('winners-session-select').value;
+  if (!sessionId) {
+    $('winners-body').innerHTML = '<div class="empty">Select a session to see winners</div>';
+    return;
+  }
+  try {
+    const res  = await fetch(`${API_BASE}/bingo/session/${sessionId}/winners`);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+    renderWinnersTable(data.winners);
+  } catch (e) {
+    toast(e.message, 'error');
+  }
+}
+
+function renderWinnersTable(winners) {
+  const body = $('winners-body');
+  if (!winners?.length) {
+    body.innerHTML = '<div class="empty">No winners yet for this session</div>';
+    return;
+  }
+
+  const validatedLabel = v => {
+    if (v === 1)  return '<span class="badge-confirmed">✓ Confirmed</span>';
+    if (v === -1) return '<span class="badge-confirmed badge-rejected">✗ Rejected</span>';
+    return '<span class="badge-confirmed badge-pending">⏳ Pending</span>';
+  };
+
+  body.innerHTML = `
+    <table class="winners-table">
+      <thead>
+        <tr>
+          <th>Ref</th>
+          <th>Player</th>
+          <th>Tier</th>
+          <th>Prize</th>
+          <th>Status</th>
+          <th>Time</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${winners.map(w => `
+          <tr>
+            <td><span class="val" style="font-family:'Syne Mono',monospace;font-size:.62rem;letter-spacing:.06em">${w.id}</span></td>
+            <td><span class="val">${w.player_name}</span></td>
+            <td><span class="val">${tierLabel(w.prize_tier)}</span></td>
+            <td><span class="val-gold">${fmt(w.prize_amount)}</span></td>
+            <td>${validatedLabel(w.validated)}</td>
+            <td><span style="font-size:.58rem">${new Date(w.claimed_at).toLocaleTimeString('en-ZA',{hour:'2-digit',minute:'2-digit'})}</span></td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>`;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+function boot() {
+  loadSessionsLocally();
+  renderSessionList();
+
+  // Pre-fill today's date
+  const today = new Date().toISOString().split('T')[0];
+  $('s-date').value = today;
+}
+
+boot();
+</script>
+
+<footer style="text-align:center;padding:2rem;border-top:1px solid var(--md-border);margin-top:2rem;position:relative;z-index:1">
+  <div style="font-family:'Cinzel',serif;font-size:.7rem;letter-spacing:.22em;color:var(--md-gold-dk)">✦ MD Works ✦</div>
+  <div style="font-family:'Syne Mono',monospace;font-size:.58rem;color:var(--md-muted);letter-spacing:.12em;margin-top:.3rem">Morney Deetlefs · South Africa</div>
+</footer>
+
+</body>
+</html>
