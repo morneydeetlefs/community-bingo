@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION to force a full refresh on next deploy.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CACHE_VERSION = 'bingo-1786090685181'; // auto-stamped with Date.now() by `npm run stamp` (runs before every deploy)
+const CACHE_VERSION = 'bingo-1786090777716';
 
 const SHELL = [
   '/bingo/play.html',
