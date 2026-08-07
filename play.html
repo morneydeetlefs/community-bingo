@@ -740,7 +740,7 @@ body::before {
 // MD Works · Morney Deetlefs · mdworks.dev
 // ─────────────────────────────────────────────────────────────────────────────
 
-const API_BASE = 'https://community-bingo.morneydeetlefs.workers.dev'; // ← update after deploy
+const API_BASE = 'https://community-bingo.YOUR_SUBDOMAIN.workers.dev'; // ← update after deploy
 
 // ── Viewport scaling ──────────────────────────────────────────────────────────
 
@@ -1438,7 +1438,16 @@ async function pollKV() {
       if (session.status === 'pending') updateWaitingPot(kv.pot);
     }
 
-    // New ball
+    // Catch-up: silently daub any balls missed due to network blips
+    if (data.called_numbers && data.called_numbers.length) {
+      let missed = false;
+      data.called_numbers.forEach(n => {
+        if (!calledNums.has(n)) { calledNums.add(n); missed = true; }
+      });
+      if (missed) applyAllCalled(); // re-render card to show missed daubs
+    }
+
+    // New ball — animate only the latest one
     if (kv?.latest && kv.latest.number !== lastBallNum) {
       onNewBall(kv.latest.number, kv.latest.call);
     }
