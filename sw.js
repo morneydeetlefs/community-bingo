@@ -9,13 +9,13 @@
 // Bump CACHE_VERSION to force a full refresh on next deploy.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CACHE_VERSION = 'bingo-1786090777716';
+const CACHE_VERSION = 'bingo-v1';
 
 const SHELL = [
-  '/bingo/play.html',
-  '/bingo/manifest.json',
-  '/bingo/icon-192.png',
-  '/bingo/icon-512.png',
+  '/play.html',
+  '/manifest.json',
+  '/icon-192.png',
+  '/icon-512.png',
   // Google Fonts — cached on first load
   'https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;900&family=Cormorant+Garamond:ital,wght@1,300&family=Raleway:wght@300;400;500&family=Syne+Mono&display=swap',
 ];
@@ -51,7 +51,7 @@ self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
   // API calls — always hit the network
-  if (url.pathname.startsWith('/bingo/') && !url.pathname.endsWith('.html')) {
+  if (url.pathname.startsWith('/bingo/')) {
     event.respondWith(fetch(event.request));
     return;
   }
