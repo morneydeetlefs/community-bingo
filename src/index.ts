@@ -456,10 +456,11 @@ async function handleGetSession(id: string, env: Env): Promise<Response> {
   if (!session) return err('Session not found', 404, env);
 
   const kv     = kvKeys(id);
-  const [statusRaw, latestRaw, potRaw] = await Promise.all([
+  const [statusRaw, latestRaw, potRaw, winnerRaw] = await Promise.all([
     env.KV.get(kv.status),
     env.KV.get(kv.latest),
     env.KV.get(kv.pot),
+    env.KV.get(kv.winner),
   ]);
 
   const called = await env.DB
@@ -472,6 +473,7 @@ async function handleGetSession(id: string, env: Env): Promise<Response> {
       status: statusRaw ?? session.status,
       latest: latestRaw ? JSON.parse(latestRaw) : null,
       pot:    potRaw    ? JSON.parse(potRaw)    : null,
+      winner: winnerRaw ? JSON.parse(winnerRaw) : null,
     },
     called_numbers: called.results ?? [],
   }, 200, env);
