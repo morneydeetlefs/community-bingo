@@ -1550,11 +1550,16 @@ async function pollKV() {
       }
     }
 
-    // New ball — only animate if we haven't seen this number yet
-    if (kv?.latest && kv.latest.number !== lastBallNum) {
-      // Guard: if catch-up already added it to calledNums silently, still
-      // update the ball display but skip the daub/toast (onNewBall checks calledNums)
-      onNewBall(kv.latest.number, kv.latest.call);
+    // New ball — drive from called_numbers (D1, always consistent)
+    // kv.latest can lag up to 60s due to KV eventual consistency;
+    // called_numbers is written to D1 first and is immediately accurate.
+    if (data.called_numbers && data.called_numbers.length) {
+      const latestNum = data.called_numbers[data.called_numbers.length - 1];
+      if (latestNum !== lastBallNum) {
+        // Use call phrase from kv.latest if it matches, otherwise just the number
+        const callPhrase = (kv?.latest?.number === latestNum) ? kv.latest.call : null;
+        onNewBall(latestNum, callPhrase);
+      }
     }
 
     // Winner announcements
