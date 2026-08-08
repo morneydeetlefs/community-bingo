@@ -1126,7 +1126,7 @@ function renderCard() {
   }
 }
 
-function makeCell(val, ri, ci, ticketId, isFree = false) {
+function makeCell(val, ri, ci, cellPrefix, isFree = false) {
   const el = document.createElement('div');
   if (isFree) {
     el.className = 'cell free daubed';
@@ -1139,20 +1139,19 @@ function makeCell(val, ri, ci, ticketId, isFree = false) {
   }
   el.className = 'cell';
   el.textContent = val;
-  el.id = `cell-${ticketId}-${val}`;
+  el.id = `cell-${cellPrefix}-${val}`;
 
-  const isDaubed = calledNums.has(val) && autoDaub;
-  const isPending = !autoDaub && calledNums.has(val) && !isDaubed;
+  const isDaubed  = calledNums.has(val) && autoDaub;
+  const isPending = !autoDaub && calledNums.has(val);
 
   if (isDaubed) {
     el.classList.add('daubed');
   } else if (isPending) {
     el.classList.add('tappable');
     pendingDaubs.add(val);
-    el.addEventListener('click', () => manualDaub(val, ticketId));
-  } else {
-    el.addEventListener('click', () => manualDaub(val, ticketId));
+    el.addEventListener('click', () => manualDaub(val, cellPrefix), { once: true });
   }
+  // Non-daubed, non-pending cells get no click listener
   return el;
 }
 
@@ -1451,10 +1450,12 @@ async function claimBingo() {
         invalid_claim:    'Your card doesn\'t match that claim. Keep playing!',
       };
       toast(reasons[data.reason] || 'Not quite — keep playing!', 'error', 4000);
-      checkWins(); // re-evaluate
+      btn.disabled = false;
+      checkWins(); // re-evaluate and re-pulse if still eligible
     }
   } catch (e) {
     toast(e.message, 'error', 4000);
+    btn.disabled = false;
     checkWins();
   }
 }
