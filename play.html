@@ -784,6 +784,7 @@ let pollHandle    = null;
 let lastBallNum   = null;
 let winnerData    = null;   // confirmed winner from KV
 let lastWinnerRef = null;
+let lastWinnerValid = null; // track validated state to detect pending→confirmed transition
 let fullTicketUrl = null;   // for stale link banner
 
 // Derived
@@ -1447,6 +1448,9 @@ async function claimBingo() {
     if (data.valid) {
       toast('BINGO! Waiting for caller to confirm…', 'info', 30000);
       $('call-phrase').textContent = 'Waiting for caller…';
+      // Poll faster while waiting for confirmation
+      if (pollHandle) clearInterval(pollHandle);
+      pollHandle = setInterval(pollKV, 500);
     } else {
       const reasons = {
         tier_already_won: 'That prize has already been won.',
@@ -1467,19 +1471,25 @@ async function claimBingo() {
 
 function maybeShowWinner(w) {
   if (!w || w.validated !== 1) return;
-  if (w.ref === lastWinnerRef) return;
+  // Skip only if we already showed the certificate for this exact ref
+  if (w.ref === lastWinnerRef && lastWinnerValid === 1) return;
   // Only show if this winner belongs to one of our tickets
   const myTicketIds = tickets.map(t => t.id);
   if (!myTicketIds.includes(w.ticket_id)) return;
 
-  lastWinnerRef = w.ref;
-  winnerData    = w;
+  lastWinnerRef   = w.ref;
+  lastWinnerValid = 1;
+  winnerData      = w;
 
-  // Clear any "Waiting for caller…" text
+  // Restore normal poll speed
+  if (pollHandle) clearInterval(pollHandle);
+  pollHandle = setInterval(pollKV, 2500);
+
+  // Clear any "Waiting for caller…" text and toast
   const phraseEl = $('call-phrase');
-  if (phraseEl && phraseEl.textContent === 'Waiting for caller…') {
-    phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
-  }
+  if (phraseEl) phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
+  clearTimeout(toastTimer);
+  $('toast').className = 'toast'; // hide toast immediately
 
   $('cert-name').textContent    = w.player_name;
   $('cert-tier').textContent    = tierLabel(w.prize_tier);
@@ -1605,6 +1615,9 @@ async function pollKV() {
         phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
         toast('Claim not confirmed — keep playing!', 'error', 4000);
         $('bingo-btn').disabled = false;
+        // Restore normal poll speed
+        if (pollHandle) clearInterval(pollHandle);
+        pollHandle = setInterval(pollKV, 2500);
         checkWins();
       }
     }
