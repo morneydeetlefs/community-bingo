@@ -492,7 +492,15 @@ async function handleStartSession(id: string, env: Env): Promise<Response> {
   if (session.status !== 'pending') return err('Session already started or ended', 400, env);
 
   const now = Date.now();
-  const pot = await getPotValue(env, id);
+
+  // Always recalculate pot from D1 at start time — never trust the KV cache
+  // which may be stale (written when fewer tickets were paid).
+  const row = await env.DB
+    .prepare(`SELECT COUNT(*) as n, s.ticket_price FROM tickets t
+              JOIN sessions s ON t.session_id = s.id
+              WHERE t.session_id = ? AND t.paid = 1`)
+    .bind(id).first<{ n: number; ticket_price: number }>();
+  const pot = (row?.n ?? 0) * (row?.ticket_price ?? 0);
 
   await env.DB.prepare(`
     UPDATE sessions SET status = 'active', pot_locked_at = ? WHERE id = ?
