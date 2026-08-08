@@ -102,7 +102,7 @@ function uuid(): string {
 async function winnerRef(env: Env, sessionId: string): Promise<string> {
   const year = new Date().getFullYear();
   const row  = await env.DB
-    .prepare(`SELECT COUNT(*) as n FROM winners WHERE id LIKE 'BNG-${year}-%'`)
+    .prepare(`SELECT COUNT(*) as n FROM winners WHERE id LIKE 'BNG-${year}-%'`) 
     .first<{ n: number }>();
   const seq  = ((row?.n ?? 0) + 1).toString().padStart(4, '0');
   return `BNG-${year}-${seq}`;
@@ -296,6 +296,12 @@ export default {
         return handleCreateSession(request, env);
       }
 
+      // ── GET /bingo/live/:id  (lightweight poll endpoint) ─────────────────
+      const liveMatch = path.match(/^\/bingo\/live\/([^/]+)$/);
+      if (method === 'GET' && liveMatch) {
+        return handleGetLive(liveMatch[1], env);
+      }
+
       // ── GET /bingo/session/:id ───────────────────────────────────────────
       const sessionMatch = path.match(/^\/bingo\/session\/([^/]+)$/);
       if (method === 'GET' && sessionMatch) {
@@ -379,6 +385,57 @@ export default {
 // ─────────────────────────────────────────────────────────────────────────────
 // HANDLERS
 // ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * GET /bingo/live/:id
+ * Lightweight poll endpoint — KV state + called numbers only.
+ * Avoids loading full ticket / session rows on every 2.5s client poll.
+ *
+ * Response shape is intentionally close to the `kv` + `called_numbers`
+ * subset that play.html and caller.html already consume, so frontend
+ * changes stay minimal.
+ */
+async function handleGetLive(id: string, env: Env): Promise<Response> {
+  const kv = kvKeys(id);
+
+  // Parallel: 4 KV reads + 1 indexed D1 query (max 90 rows)
+  const [statusRaw, latestRaw, potRaw, winnerRaw, called] = await Promise.all([
+    env.KV.get(kv.status),
+    env.KV.get(kv.latest),
+    env.KV.get(kv.pot),
+    env.KV.get(kv.winner),
+    env.DB
+      .prepare('SELECT number FROM called_numbers WHERE session_id = ? ORDER BY called_at ASC')
+      .bind(id)
+      .all<{ number: number }>(),
+  ]);
+
+  // If KV has never been seeded for this id, treat as not found
+  if (statusRaw === null && latestRaw === null && potRaw === null) {
+    // Fallback: check D1 once so we don't 404 a valid session whose KV expired
+    const row = await env.DB
+      .prepare('SELECT status FROM sessions WHERE id = ?')
+      .bind(id)
+      .first<{ status: string }>();
+    if (!row) return err('Session not found', 404, env);
+
+    return json({
+      status: row.status,
+      latest: null,
+      pot: null,
+      winner: null,
+      called_numbers: (called.results ?? []).map(r => r.number),
+    }, 200, env);
+  }
+
+  return json({
+    status: statusRaw ?? 'pending',
+    latest: latestRaw ? JSON.parse(latestRaw) : null,
+    pot:    potRaw    ? JSON.parse(potRaw)    : null,
+    winner: winnerRaw ? JSON.parse(winnerRaw) : null,
+    called_numbers: (called.results ?? []).map(r => r.number),
+  }, 200, env);
+}
 
 /**
  * POST /bingo/session
