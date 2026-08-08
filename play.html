@@ -1251,8 +1251,8 @@ function daubCell(val, cellPrefix) {
   const el = $(`cell-${cellPrefix}-${val}`);
   if (!el || el.classList.contains('daubed') || el.classList.contains('blank')) return;
   el.classList.remove('tappable');
+  el.classList.add('daubed'); // mark immediately so re-renders don't re-add listeners
   el.classList.add('flash');
-  setTimeout(() => el.classList.add('daubed'), 100);
 }
 
 // Returns the cellPrefix for the currently visible card
@@ -1265,7 +1265,8 @@ function currentCellPrefix() {
 function updateDaubHint() {
   const hint = $('daub-hint');
   if (autoDaub || pendingDaubs.size === 0) { hint.textContent = ''; return; }
-  hint.textContent = `Tap your card · ${pendingDaubs.size} number${pendingDaubs.size > 1 ? 's' : ''} waiting`;
+  const nums = [...pendingDaubs].sort((a,b) => a - b).join('  ');
+  hint.textContent = `Tap to daub: ${nums}`;
 }
 
 // ── Apply called numbers ──────────────────────────────────────────────────────
@@ -1300,6 +1301,7 @@ function onNewBall(n, call) {
   }
   $('ball-number').textContent = n;
   $('call-phrase').textContent = call || n;
+  $('call-phrase').dataset.phrase = call || n;
   $('call-sub').textContent = `${calledNums.size} called`;
 
   // Skip daub animation and toast if catch-up already handled this number silently
@@ -1443,7 +1445,8 @@ async function claimBingo() {
     if (!res.ok) throw new Error(data.error || 'Claim failed');
 
     if (data.valid) {
-      toast('BINGO! Waiting for caller to confirm…', 'info', 6000);
+      toast('BINGO! Waiting for caller to confirm…', 'info', 30000);
+      $('call-phrase').textContent = 'Waiting for caller…';
     } else {
       const reasons = {
         tier_already_won: 'That prize has already been won.',
@@ -1471,6 +1474,12 @@ function maybeShowWinner(w) {
 
   lastWinnerRef = w.ref;
   winnerData    = w;
+
+  // Clear any "Waiting for caller…" text
+  const phraseEl = $('call-phrase');
+  if (phraseEl && phraseEl.textContent === 'Waiting for caller…') {
+    phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
+  }
 
   $('cert-name').textContent    = w.player_name;
   $('cert-tier').textContent    = tierLabel(w.prize_tier);
@@ -1588,6 +1597,16 @@ async function pollKV() {
       }
       // Show certificate only if it's our ticket
       maybeShowWinner(w);
+    } else {
+      // KV winner key was deleted = claim was rejected
+      // If we were waiting for confirmation, clear the toast and re-enable
+      const phraseEl = $('call-phrase');
+      if (phraseEl && phraseEl.textContent === 'Waiting for caller…') {
+        phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
+        toast('Claim not confirmed — keep playing!', 'error', 4000);
+        $('bingo-btn').disabled = false;
+        checkWins();
+      }
     }
 
   } catch(e) { /* network blip */ }
