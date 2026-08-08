@@ -9,7 +9,7 @@
 // Bump CACHE_VERSION to force a full refresh on next deploy.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const CACHE_VERSION = 'bingo-v1';
+const CACHE_VERSION = 'bingo-1786131206528';
 
 const SHELL = [
   '/play.html',
