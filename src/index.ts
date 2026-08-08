@@ -61,8 +61,9 @@ interface Winner {
 // ── KV key helpers ────────────────────────────────────────────────────────────
 
 const kvKeys = (id: string) => ({
-  status:  `bingo:session:${id}:status`,
-  latest:  `bingo:session:${id}:latest`,
+  state:   `bingo:session:${id}:state`,   // lightweight poll key (status + latest ball + winner ref)
+  status:  `bingo:session:${id}:status`,  // kept for backward compat
+  latest:  `bingo:session:${id}:latest`,  // kept for backward compat
   pot:     `bingo:session:${id}:pot`,
   winner:  `bingo:session:${id}:winner`,
   players: `bingo:session:${id}:players`,
@@ -90,6 +91,21 @@ function json(data: unknown, status = 200, env?: Env): Response {
 
 function err(message: string, status = 400, env?: Env): Response {
   return json({ error: message }, status, env);
+}
+
+// ── State KV helper ───────────────────────────────────────────────────────────
+// Single lightweight KV key polled by play.html every 2.5s.
+// Contains only what the player needs to react: status, latest ball, winner ref.
+// Full card data and pot are fetched once at boot via GET /bingo/ticket/:id.
+
+async function writeStateKV(
+  env: Env,
+  sessionId: string,
+  status: string,
+  latest: { number: number; call: string; total_called: number } | null,
+  winner: object | null,
+): Promise<void> {
+  await env.KV.put(kvKeys(sessionId).state, JSON.stringify({ status, latest, winner }));
 }
 
 // ── ID generators ─────────────────────────────────────────────────────────────
@@ -326,6 +342,13 @@ export default {
         return handleGetTickets(ticketsMatch[1], env);
       }
 
+      // ── GET /bingo/session/:id/state ─────────────────────────────────────
+      // Lightweight poll endpoint for play.html — single KV read, tiny payload.
+      const stateMatch = path.match(/^\/bingo\/session\/([^/]+)\/state$/);
+      if (method === 'GET' && stateMatch) {
+        return handleGetState(stateMatch[1], env);
+      }
+
       // ── GET /bingo/session/:id/winners ───────────────────────────────────
       const winnersMatch = path.match(/^\/bingo\/session\/([^/]+)\/winners$/);
       if (method === 'GET' && winnersMatch) {
@@ -517,6 +540,7 @@ async function handleStartSession(id: string, env: Env): Promise<Response> {
       pot_total:    pot,
       prizes:       buildPrizeMap(session.mode, pot, session),
     })),
+    writeStateKV(env, id, 'active', null, null),
   ]);
 
   return json({ status: 'active', pot_locked_at: now, pot_total: pot }, 200, env);
@@ -561,7 +585,14 @@ async function handleDraw(id: string, env: Env): Promise<Response> {
     remaining:    remaining.length - 1,
   };
 
-  await env.KV.put(kvKeys(id).latest, JSON.stringify(latestPayload));
+  // Read existing winner from state key so we can preserve it in the update
+  const existingStateRaw = await env.KV.get(kvKeys(id).state);
+  const existingWinner   = existingStateRaw ? (JSON.parse(existingStateRaw).winner ?? null) : null;
+
+  await Promise.all([
+    env.KV.put(kvKeys(id).latest, JSON.stringify(latestPayload)),
+    writeStateKV(env, id, 'active', { number, call: callText, total_called: calledSet.size + 1 }, existingWinner),
+  ]);
 
   return json(latestPayload, 200, env);
 }
@@ -579,9 +610,42 @@ async function handleEndSession(id: string, env: Env): Promise<Response> {
   if (session.status === 'ended') return err('Session already ended', 400, env);
 
   await env.DB.prepare(`UPDATE sessions SET status = 'ended' WHERE id = ?`).bind(id).run();
-  await env.KV.put(kvKeys(id).status, 'ended');
+  await Promise.all([
+    env.KV.put(kvKeys(id).status, 'ended'),
+    writeStateKV(env, id, 'ended', null, null),
+  ]);
 
   return json({ status: 'ended' }, 200, env);
+}
+
+/**
+ * GET /bingo/session/:id/state
+ * Lightweight poll endpoint for play.html.
+ * Single KV read — returns only what players need each poll cycle:
+ *   { status, latest: { number, call, total_called } | null, winner: {...} | null }
+ * Falls back to D1 if state key is missing (e.g. session pre-dates this deploy).
+ */
+async function handleGetState(id: string, env: Env): Promise<Response> {
+  const raw = await env.KV.get(kvKeys(id).state);
+  if (raw) return json(JSON.parse(raw), 200, env);
+
+  // Fallback: reconstruct from D1 + individual KV keys for sessions created
+  // before this endpoint existed.
+  const session = await env.DB
+    .prepare('SELECT status FROM sessions WHERE id = ?')
+    .bind(id).first<{ status: string }>();
+  if (!session) return err('Session not found', 404, env);
+
+  const [latestRaw, winnerRaw] = await Promise.all([
+    env.KV.get(kvKeys(id).latest),
+    env.KV.get(kvKeys(id).winner),
+  ]);
+
+  return json({
+    status:  session.status,
+    latest:  latestRaw ? JSON.parse(latestRaw) : null,
+    winner:  winnerRaw ? JSON.parse(winnerRaw) : null,
+  }, 200, env);
 }
 
 /**
@@ -615,22 +679,19 @@ async function handleGetTickets(id: string, env: Env): Promise<Response> {
 
 /**
  * POST /bingo/ticket
- * Create a ticket (one or more cards) for a player.
+ * Create a ticket with exactly one card for a player.
  *
- * Body: { session_id, player_name, player_phone?, card_count?: number }
- * Default card_count = 1. Max = 6.
+ * Body: { session_id, player_name, player_phone? }
  */
 async function handleCreateTicket(request: Request, env: Env): Promise<Response> {
   const body = await request.json() as {
-    session_id:   string;
-    player_name:  string;
+    session_id:    string;
+    player_name:   string;
     player_phone?: string;
-    card_count?:  number;
   };
 
-  const { session_id, player_name, player_phone, card_count = 1 } = body;
+  const { session_id, player_name, player_phone } = body;
   if (!session_id || !player_name) return err('Missing session_id or player_name', 400, env);
-  if (card_count < 1 || card_count > 6) return err('card_count must be 1–6', 400, env);
 
   const session = await env.DB
     .prepare('SELECT * FROM sessions WHERE id = ?')
@@ -645,10 +706,8 @@ async function handleCreateTicket(request: Request, env: Env): Promise<Response>
     if (count >= session.ticket_cap) return err('Ticket cap reached', 400, env);
   }
 
-  // Generate cards
-  const cards = Array.from({ length: card_count }, () =>
-    session.mode === '90' ? generate90CardSafe() : generate75Card()
-  );
+  // Always exactly one card per ticket
+  const cards = [session.mode === '90' ? generate90CardSafe() : generate75Card()];
 
   const id  = uuid();
   const now = Date.now();
@@ -686,25 +745,26 @@ async function handleGetTicket(id: string, env: Env): Promise<Response> {
     .bind(ticket.session_id).all<{ number: number }>();
 
   const kv = kvKeys(ticket.session_id);
-  const [statusRaw, latestRaw, potRaw, winnerRaw] = await Promise.all([
-    env.KV.get(kv.status),
-    env.KV.get(kv.latest),
+  const [stateRaw, potRaw] = await Promise.all([
+    env.KV.get(kv.state),
     env.KV.get(kv.pot),
-    env.KV.get(kv.winner),
   ]);
+
+  const cards: (number | null)[][][] = JSON.parse(ticket.cards);
+  const state = stateRaw ? JSON.parse(stateRaw) : null;
 
   return json({
     ticket: {
       ...ticket,
-      cards: JSON.parse(ticket.cards),
+      card: cards[0] ?? null,   // single card — index 0 always
     },
     session,
     called_numbers: (called.results ?? []).map(r => r.number),
     kv: {
-      status: statusRaw,
-      latest: latestRaw ? JSON.parse(latestRaw) : null,
-      pot:    potRaw    ? JSON.parse(potRaw)    : null,
-      winner: winnerRaw ? JSON.parse(winnerRaw) : null,
+      status: state?.status  ?? null,
+      latest: state?.latest  ?? null,
+      pot:    potRaw ? JSON.parse(potRaw) : null,
+      winner: state?.winner  ?? null,
     },
   }, 200, env);
 }
@@ -809,7 +869,7 @@ async function handleClaim(request: Request, env: Env): Promise<Response> {
           prize_tier, prize_amount, now).run();
 
   // 8. Alert caller via KV (pending — awaits confirmation)
-  await env.KV.put(kvKeys(session_id).winner, JSON.stringify({
+  const winnerKV = {
     ref,
     player_name:  ticketRow.player_name,
     prize_tier,
@@ -818,7 +878,16 @@ async function handleClaim(request: Request, env: Env): Promise<Response> {
     prize_amount,
     validated:    0,
     timestamp:    now,
-  }));
+  };
+
+  // Read current state so we can preserve the latest ball in the state key
+  const existingStateRaw = await env.KV.get(kvKeys(session_id).state);
+  const existingLatest   = existingStateRaw ? (JSON.parse(existingStateRaw).latest ?? null) : null;
+
+  await Promise.all([
+    env.KV.put(kvKeys(session_id).winner, JSON.stringify(winnerKV)),
+    writeStateKV(env, session_id, 'active', existingLatest, winnerKV),
+  ]);
 
   return json({ valid: true, ref, player_name: ticketRow.player_name, prize_amount }, 200, env);
 }
@@ -841,7 +910,7 @@ async function handleConfirm(winnerId: string, env: Env): Promise<Response> {
   `).bind(now, winnerId).run();
 
   // Push confirmed winner to KV so play.html instances see it
-  await env.KV.put(kvKeys(winner.session_id).winner, JSON.stringify({
+  const confirmedWinner = {
     ref:          winner.id,
     player_name:  winner.player_name,
     tier:         winner.prize_tier,
@@ -850,7 +919,15 @@ async function handleConfirm(winnerId: string, env: Env): Promise<Response> {
     prize_amount: winner.prize_amount,
     validated:    1,
     confirmed_at: now,
-  }));
+  };
+
+  const existingStateRaw = await env.KV.get(kvKeys(winner.session_id).state);
+  const existingLatest   = existingStateRaw ? (JSON.parse(existingStateRaw).latest ?? null) : null;
+
+  await Promise.all([
+    env.KV.put(kvKeys(winner.session_id).winner, JSON.stringify(confirmedWinner)),
+    writeStateKV(env, winner.session_id, 'active', existingLatest, confirmedWinner),
+  ]);
 
   return json({ confirmed: true, ref: winnerId }, 200, env);
 }
@@ -869,8 +946,14 @@ async function handleReject(winnerId: string, env: Env): Promise<Response> {
 
   await env.DB.prepare(`UPDATE winners SET validated = -1 WHERE id = ?`).bind(winnerId).run();
 
-  // Clear the pending winner KV key so play.html and caller see nothing pending
-  await env.KV.delete(kvKeys(winner.session_id).winner);
+  // Clear the pending winner from both the legacy winner key and the state key
+  const existingStateRaw = await env.KV.get(kvKeys(winner.session_id).state);
+  const existingLatest   = existingStateRaw ? (JSON.parse(existingStateRaw).latest ?? null) : null;
+
+  await Promise.all([
+    env.KV.delete(kvKeys(winner.session_id).winner),
+    writeStateKV(env, winner.session_id, 'active', existingLatest, null),
+  ]);
 
   return json({ rejected: true, ref: winnerId }, 200, env);
 }

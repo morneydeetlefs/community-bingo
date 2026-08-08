@@ -627,11 +627,6 @@ body::before {
   <div style="font-family:'Syne Mono',monospace;font-size:.55rem;color:var(--muted);margin-top:8px">Community Bingo ✦ MD Works</div>
 </div>
 
-<!-- ── Stale link banner ── -->
-<div id="stale-banner" onclick="openFullLink()">
-  You have <strong id="stale-count"></strong> more tickets — tap for your full link
-</div>
-
 <!-- ── Main app ── -->
 <div id="app">
 
@@ -672,15 +667,9 @@ body::before {
   <div class="card-section">
     <div class="card-header-row">
       <div class="card-title" id="card-title">Your Card</div>
-      <div class="card-nav" id="card-nav">
-        <button class="card-nav-btn" id="btn-prev" onclick="prevCard()">‹</button>
-        <span id="card-nav-label">1 / 1</span>
-        <button class="card-nav-btn" id="btn-next" onclick="nextCard()">›</button>
-      </div>
     </div>
     <div class="col-headers" id="col-headers"></div>
     <div class="card-grid" id="card-grid"></div>
-    <div class="card-dots" id="card-dots"></div>
     <div class="daub-hint" id="daub-hint"></div>
   </div>
 
@@ -773,9 +762,7 @@ screen.orientation?.addEventListener('change', () => setTimeout(scaleApp, 200));
 // ── State ─────────────────────────────────────────────────────────────────────
 
 let session       = null;
-let tickets       = [];     // array of { id, cards, player_name, paid }
-let currentTicket = 0;      // index into tickets[] — which ticket object
-let currentCard   = 0;      // index into tickets[currentTicket].cards[] — which card within that ticket
+let ticket        = null;   // { id, card, player_name, paid, session_id }
 let calledNums    = new Set();
 let autoDaub      = true;
 let pendingDaubs  = new Set();
@@ -785,40 +772,9 @@ let lastBallNum   = null;
 let winnerData    = null;   // confirmed winner from KV
 let lastWinnerRef = null;
 let lastWinnerValid = null; // track validated state to detect pending→confirmed transition
-let fullTicketUrl = null;   // for stale link banner
 
 // Derived
 let mode          = '90';   // set once session loads
-
-// Helper: total cards across all tickets (for carousel)
-function totalCards() {
-  return tickets.reduce((sum, t) => sum + (t.cards?.length || 1), 0);
-}
-
-// Helper: get flat card index (0-based across all tickets' cards)
-function flatCardIndex() {
-  let idx = 0;
-  for (let ti = 0; ti < currentTicket; ti++) idx += (tickets[ti].cards?.length || 1);
-  return idx + currentCard;
-}
-
-// Helper: set currentTicket + currentCard from a flat index
-function setFromFlatIndex(flat) {
-  let remaining = flat;
-  for (let ti = 0; ti < tickets.length; ti++) {
-    const cardCount = tickets[ti].cards?.length || 1;
-    if (remaining < cardCount) {
-      currentTicket = ti;
-      currentCard   = remaining;
-      return;
-    }
-    remaining -= cardCount;
-  }
-  // clamp to last
-  currentTicket = tickets.length - 1;
-  currentCard   = (tickets[currentTicket].cards?.length || 1) - 1;
-}
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const $ = id => document.getElementById(id);
@@ -867,44 +823,32 @@ function setTheme(t) {
 
 // ── URL parsing ───────────────────────────────────────────────────────────────
 
-function getTicketIds() {
+function getTicketId() {
   const params = new URLSearchParams(location.search);
-  return params.getAll('ticket').filter(Boolean);
+  return params.get('ticket') || null;
 }
 
 // ── Boot ─────────────────────────────────────────────────────────────────────
 
 async function boot() {
-  const ticketIds = getTicketIds();
-  if (!ticketIds.length) {
+  const ticketId = getTicketId();
+  if (!ticketId) {
     showError('No ticket ID found in this link. Check your link from the organiser.');
     return;
   }
 
-  // Load first ticket to get session details
+  // Load ticket once at boot — gets card, session, called_numbers, and initial KV state
   try {
-    const res  = await fetch(`${API_BASE}/bingo/ticket/${ticketIds[0]}`);
+    const res  = await fetch(`${API_BASE}/bingo/ticket/${ticketId}`);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Could not load ticket');
 
     session = data.session;
     mode    = session.mode;
+    ticket  = data.ticket; // { id, card, player_name, paid, session_id, … }
 
-    // Load all tickets (may be multi-ticket)
-    const allTickets = await Promise.all(ticketIds.map(async id => {
-      if (id === ticketIds[0]) return data.ticket;
-      const r = await fetch(`${API_BASE}/bingo/ticket/${id}`);
-      const d = await r.json();
-      if (!r.ok) return null;
-      return d.ticket;
-    }));
-    tickets = allTickets.filter(Boolean);
-
-    // Rebuild called set from D1 pre-daub (reconnect)
+    // Rebuild called set from D1 for reconnect pre-daub
     calledNums = new Set(data.called_numbers || []);
-
-    // Stale link check: if there are more tickets in D1 for this player than in URL
-    // (simplified: we trust the URL for now — organiser re-sends the full URL)
 
     initUI();
 
@@ -915,15 +859,15 @@ async function boot() {
       hideWaiting();
       showStatus('ended');
     } else {
-      // pending — show waiting screen with live pot, start polling for status change
+      // pending — show waiting screen with pot, poll for status change
       showWaiting(data.kv);
       startPolling();
     }
 
-    // Reconnect: apply all called numbers to current card
+    // Reconnect: apply any already-called numbers to the card
     if (calledNums.size > 0) applyAllCalled();
 
-    // Check for existing confirmed winner
+    // Check for a winner that was already confirmed before this page loaded
     if (data.kv?.winner?.validated === 1) {
       lastWinnerRef = data.kv.winner.ref;
       maybeShowWinner(data.kv.winner);
@@ -942,8 +886,6 @@ function initUI() {
   buildPotStrip();
   buildPrizes();
   renderCard();
-  buildDots();
-  updateCardNav();
 }
 
 // ── Waiting screen ────────────────────────────────────────────────────────────
@@ -951,7 +893,7 @@ function initUI() {
 function showWaiting(kv) {
   $('waiting-screen').style.display = 'flex';
   $('w-session-name').textContent = session.name;
-  $('w-session-sub').innerHTML = `${tickets[0]?.player_name || 'Your'} card is ready.<br/>The game starts soon.`;
+  $('w-session-sub').innerHTML = `${ticket?.player_name || 'Your'} card is ready.<br/>The game starts soon.`;
   if (kv?.pot) updateWaitingPot(kv.pot);
 }
 
@@ -1077,24 +1019,17 @@ function markTierWon(tier) {
 // ── Card rendering ────────────────────────────────────────────────────────────
 
 function renderCard() {
-  const ticket = tickets[currentTicket];
-  if (!ticket) return;
-  const card = ticket.cards[currentCard]; // carousel navigates within a ticket's cards[]
-  if (!card) return;
+  if (!ticket?.card) return;
+  const card = ticket.card;
 
-  const total = totalCards();
-  const flat  = flatCardIndex();
-  $('card-title').textContent = total > 1
-    ? `Card ${flat + 1} of ${total}`
-    : 'Your Card';
+  $('card-title').textContent = 'Your Card';
 
   const grid = $('card-grid');
   const hdrs = $('col-headers');
   grid.innerHTML = '';
   hdrs.innerHTML = '';
 
-  // Use a unique cell key per ticket + card index so multiple cards' cells don't collide
-  const cellPrefix = `${ticket.id}-c${currentCard}`;
+  const cellPrefix = `${ticket.id}-c0`;
 
   if (mode === '90') {
     grid.style.gridTemplateColumns = 'repeat(9, 1fr)';
@@ -1104,7 +1039,6 @@ function renderCard() {
       h.className = 'col-h range'; h.textContent = r;
       hdrs.appendChild(h);
     });
-    // 3 rows × 9 cols
     card.forEach((row, ri) => {
       row.forEach((val, ci) => {
         grid.appendChild(makeCell(val, ri, ci, cellPrefix));
@@ -1156,84 +1090,15 @@ function makeCell(val, ri, ci, cellPrefix, isFree = false) {
   return el;
 }
 
-// ── Carousel ─────────────────────────────────────────────────────────────────
-
-function buildDots() {
-  const dots  = $('card-dots');
-  const total = totalCards();
-  dots.innerHTML = '';
-  if (total <= 1) { dots.classList.add('hidden'); return; }
-  dots.classList.remove('hidden');
-  const flat = flatCardIndex();
-  for (let i = 0; i < total; i++) {
-    const d = document.createElement('div');
-    d.className = 'dot' + (i === flat ? ' active' : '');
-    d.onclick = () => goCard(i);
-    dots.appendChild(d);
-  }
-}
-
-function updateCardNav() {
-  const nav   = $('card-nav');
-  const total = totalCards();
-  if (total <= 1) { nav.classList.add('hidden'); return; }
-  nav.classList.remove('hidden');
-  const flat = flatCardIndex();
-  $('card-nav-label').textContent = `${flat + 1} / ${total}`;
-  $('btn-prev').disabled = flat === 0;
-  $('btn-next').disabled = flat === total - 1;
-}
-
-function goCard(flatIdx) {
-  const prevFlat = flatCardIndex();
-  const dir = flatIdx > prevFlat ? 'right' : 'left';
-  setFromFlatIndex(flatIdx);
-  pendingDaubs.clear();
-  renderCard();
-  buildDots();
-  updateCardNav();
-  applyAllCalled();   // re-daub the newly shown card
-  checkWins();
-  updateBingoBtn();
-  // Animate the grid in
-  const grid = $('card-grid');
-  grid.classList.remove('card-slide-right', 'card-slide-left');
-  void grid.offsetWidth; // reflow
-  grid.classList.add(dir === 'right' ? 'card-slide-right' : 'card-slide-left');
-}
-
-function prevCard() {
-  const flat = flatCardIndex();
-  if (flat > 0) goCard(flat - 1);
-}
-function nextCard() {
-  const flat  = flatCardIndex();
-  const total = totalCards();
-  if (flat < total - 1) goCard(flat + 1);
-}
-
-// Swipe support
-let swipeStartX = null;
-document.getElementById('card-grid').addEventListener('touchstart', e => { swipeStartX = e.touches[0].clientX }, { passive:true });
-document.getElementById('card-grid').addEventListener('touchend', e => {
-  if (swipeStartX === null) return;
-  const dx = e.changedTouches[0].clientX - swipeStartX;
-  if (Math.abs(dx) > 40) { dx < 0 ? nextCard() : prevCard() }
-  swipeStartX = null;
-}, { passive:true });
-
 // ── Daub mechanics ────────────────────────────────────────────────────────────
 
 function toggleDaub(btn) {
   autoDaub = !autoDaub;
   btn.classList.toggle('on', autoDaub);
   if (autoDaub) {
-    // Daub all pending on the currently visible card
     const prefix = currentCellPrefix();
     pendingDaubs.forEach(n => daubCell(n, prefix));
     pendingDaubs.clear();
-  } else {
-    // Un-daub isn't possible — just mark newly called as pending going forward
   }
   updateDaubHint();
   checkWins();
@@ -1252,15 +1117,13 @@ function daubCell(val, cellPrefix) {
   const el = $(`cell-${cellPrefix}-${val}`);
   if (!el || el.classList.contains('daubed') || el.classList.contains('blank')) return;
   el.classList.remove('tappable');
-  el.classList.add('daubed'); // mark immediately so re-renders don't re-add listeners
+  el.classList.add('daubed');
   el.classList.add('flash');
 }
 
-// Returns the cellPrefix for the currently visible card
+// Single card — prefix is always ticket.id + '-c0'
 function currentCellPrefix() {
-  const ticket = tickets[currentTicket];
-  if (!ticket) return null;
-  return `${ticket.id}-c${currentCard}`;
+  return ticket ? `${ticket.id}-c0` : null;
 }
 
 function updateDaubHint() {
@@ -1273,21 +1136,18 @@ function updateDaubHint() {
 // ── Apply called numbers ──────────────────────────────────────────────────────
 
 function applyAllCalled() {
+  if (!ticket?.card) return;
   calledNums.forEach(n => {
-    tickets.forEach((ticket, ti) => {
-      (ticket.cards || [ticket.cards]).forEach((card, ci) => {
-        if (autoDaub) daubCell(n, `${ticket.id}-c${ci}`);
-      });
-    });
+    if (autoDaub) daubCell(n, `${ticket.id}-c0`);
   });
 }
 
 function onNewBall(n, call) {
-  const alreadyDaubed = calledNums.has(n); // true if catch-up already processed this
+  const alreadyDaubed = calledNums.has(n);
   calledNums.add(n);
   lastBallNum = n;
 
-  // Always update the ball display
+  // Update ball display
   const ball = $('the-ball');
   ball.className = 'bingo-ball';
   void ball.offsetWidth;
@@ -1305,32 +1165,23 @@ function onNewBall(n, call) {
   $('call-phrase').dataset.phrase = call || n;
   $('call-sub').textContent = `${calledNums.size} called`;
 
-  // Skip daub animation and toast if catch-up already handled this number silently
+  // Skip daub animation and toast if catch-up already handled this silently
   if (alreadyDaubed) {
     checkWins();
     return;
   }
 
-  // Daub on all cards across all tickets (only visible card gets animation; others get silently daubed)
-  tickets.forEach((ticket, ti) => {
-    (ticket.cards || []).forEach((card, ci) => {
-      if (!card.flat().includes(n)) return;
-      if (autoDaub) daubCell(n, `${ticket.id}-c${ci}`);
-    });
-  });
+  const card = ticket?.card;
+  if (!card) { checkWins(); return; }
 
-  // Toast only if the number is on the currently visible card
-  const ticket = tickets[currentTicket];
-  if (!ticket) return;
-  const card = ticket.cards[currentCard];
-  if (!card) return;
-  const onCurrentCard = card.flat().includes(n);
+  const onCard = card.flat().includes(n);
+  const prefix = currentCellPrefix();
 
-  if (onCurrentCard) {
+  if (onCard) {
     if (autoDaub) {
+      daubCell(n, prefix);
       toast(`${n} — daubed!`, 'success', 1800);
     } else {
-      const prefix = currentCellPrefix();
       pendingDaubs.add(n);
       const el = $(`cell-${prefix}-${n}`);
       if (el) {
@@ -1350,28 +1201,24 @@ function onNewBall(n, call) {
 function checkWins() {
   if (session?.status !== 'active') return;
   const daubed = (val) => val === null || calledNums.has(val);
+  const card = ticket?.card;
+  if (!card) return;
 
   let canClaim = false;
 
-  for (const ticket of tickets) {
-    for (const card of (ticket.cards || [])) {
-      if (mode === '90') {
-        const rows = card.map(row => row.every(daubed));
-        if (!wonTiers.has('one_line')   && rows.filter(Boolean).length >= 1) canClaim = true;
-        if (!wonTiers.has('two_lines')  && rows.filter(Boolean).length >= 2) canClaim = true;
-        if (!wonTiers.has('full_house') && rows.every(Boolean))              canClaim = true;
-      } else {
-        const rowOk = i => card[i].every(daubed);
-        const colOk = j => card.map(r => r[j]).every(daubed);
-        const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
-        const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
-        if (!wonTiers.has('any_line') &&
-            ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) canClaim = true;
-        if (!wonTiers.has('blackout') && card.flat().every(daubed)) canClaim = true;
-      }
-      if (canClaim) break;
-    }
-    if (canClaim) break;
+  if (mode === '90') {
+    const rows = card.map(row => row.every(daubed));
+    if (!wonTiers.has('one_line')   && rows.filter(Boolean).length >= 1) canClaim = true;
+    if (!wonTiers.has('two_lines')  && rows.filter(Boolean).length >= 2) canClaim = true;
+    if (!wonTiers.has('full_house') && rows.every(Boolean))              canClaim = true;
+  } else {
+    const rowOk = i => card[i].every(daubed);
+    const colOk = j => card.map(r => r[j]).every(daubed);
+    const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
+    const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
+    if (!wonTiers.has('any_line') &&
+        ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) canClaim = true;
+    if (!wonTiers.has('blackout') && card.flat().every(daubed)) canClaim = true;
   }
 
   updateBingoBtn(canClaim);
@@ -1392,52 +1239,36 @@ async function claimBingo() {
   btn.classList.remove('pulse');
 
   const daubed = (val) => val === null || calledNums.has(val);
+  const card = ticket?.card;
+  if (!card) { btn.disabled = false; return; }
 
-  // Find the best eligible tier and the card/ticket it belongs to
   let tier = null;
-  let claimTicket = null;
-  let claimCardIndex = null;
 
-  for (const ticket of tickets) {
-    for (let ci = 0; ci < (ticket.cards || []).length; ci++) {
-      const card = ticket.cards[ci];
-      let cardTier = null;
-
-      if (mode === '90') {
-        const rows = card.map(row => row.every(daubed));
-        if (!wonTiers.has('full_house') && rows.every(Boolean))              cardTier = 'full_house';
-        else if (!wonTiers.has('two_lines') && rows.filter(Boolean).length >= 2) cardTier = 'two_lines';
-        else if (!wonTiers.has('one_line')  && rows.filter(Boolean).length >= 1) cardTier = 'one_line';
-      } else {
-        const rowOk = i => card[i].every(daubed);
-        const colOk = j => card.map(r => r[j]).every(daubed);
-        const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
-        const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
-        if (!wonTiers.has('blackout') && card.flat().every(daubed)) cardTier = 'blackout';
-        else if (!wonTiers.has('any_line') &&
-            ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) cardTier = 'any_line';
-      }
-
-      // Pick the highest tier found across all cards
-      const tierRank = { full_house: 3, two_lines: 2, one_line: 1, blackout: 2, any_line: 1 };
-      if (cardTier && (!tier || (tierRank[cardTier] || 0) > (tierRank[tier] || 0))) {
-        tier = cardTier;
-        claimTicket = ticket;
-        claimCardIndex = ci;
-      }
-    }
+  if (mode === '90') {
+    const rows = card.map(row => row.every(daubed));
+    if (!wonTiers.has('full_house') && rows.every(Boolean))              tier = 'full_house';
+    else if (!wonTiers.has('two_lines') && rows.filter(Boolean).length >= 2) tier = 'two_lines';
+    else if (!wonTiers.has('one_line')  && rows.filter(Boolean).length >= 1) tier = 'one_line';
+  } else {
+    const rowOk = i => card[i].every(daubed);
+    const colOk = j => card.map(r => r[j]).every(daubed);
+    const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
+    const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
+    if (!wonTiers.has('blackout') && card.flat().every(daubed)) tier = 'blackout';
+    else if (!wonTiers.has('any_line') &&
+        ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) tier = 'any_line';
   }
 
-  if (!tier || !claimTicket) { btn.disabled = false; return; }
+  if (!tier) { btn.disabled = false; return; }
 
   try {
     const res  = await fetch(`${API_BASE}/bingo/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ticket_id:  claimTicket.id,
+        ticket_id:  ticket.id,
         session_id: session.id,
-        card_index: claimCardIndex,
+        card_index: 0,
         prize_tier: tier,
       }),
     });
@@ -1458,7 +1289,7 @@ async function claimBingo() {
       };
       toast(reasons[data.reason] || 'Not quite — keep playing!', 'error', 4000);
       btn.disabled = false;
-      checkWins(); // re-evaluate and re-pulse if still eligible
+      checkWins();
     }
   } catch (e) {
     toast(e.message, 'error', 4000);
@@ -1471,11 +1302,10 @@ async function claimBingo() {
 
 function maybeShowWinner(w) {
   if (!w || w.validated !== 1) return;
-  // Skip only if we already showed the certificate for this exact ref
+  // Skip if we already showed the certificate for this exact ref
   if (w.ref === lastWinnerRef && lastWinnerValid === 1) return;
-  // Only show if this winner belongs to one of our tickets
-  const myTicketIds = tickets.map(t => t.id);
-  if (!myTicketIds.includes(w.ticket_id)) return;
+  // Only show certificate if this winner belongs to our ticket
+  if (w.ticket_id !== ticket?.id) return;
 
   lastWinnerRef   = w.ref;
   lastWinnerValid = 1;
@@ -1544,16 +1374,16 @@ document.addEventListener('visibilitychange', () => {
 });
 
 async function pollKV() {
-  if (!session) return;
+  if (!session || !ticket) return;
   try {
-    const res  = await fetch(`${API_BASE}/bingo/ticket/${tickets[0].id}`);
+    // Single lightweight KV read — only status, latest ball, and winner
+    const res  = await fetch(`${API_BASE}/bingo/session/${session.id}/state`);
     if (!res.ok) return;
-    const data = await res.json();
-    const kv   = data.kv;
+    const state = await res.json(); // { status, latest, winner }
 
     // Status transitions
-    if (data.session.status !== session.status) {
-      session.status = data.session.status;
+    if (state.status && state.status !== session.status) {
+      session.status = state.status;
       if (session.status === 'active') {
         hideWaiting();
         showStatus('active');
@@ -1566,69 +1396,41 @@ async function pollKV() {
       }
     }
 
-    // Pot updates
-    if (kv?.pot) {
-      updatePotStrip(kv.pot);
-      updatePrizeBadgeAmounts(kv.pot);
-      if (session.status === 'pending') updateWaitingPot(kv.pot);
-    }
-
-    // Catch-up: silently daub any balls missed due to network blips
-    if (data.called_numbers && data.called_numbers.length) {
-      let missed = false;
-      data.called_numbers.forEach(n => {
-        if (!calledNums.has(n)) { calledNums.add(n); missed = true; }
-      });
-      if (missed) {
+    // New ball from state.latest — add to calledNums and display
+    if (state.latest?.number != null) {
+      const n = state.latest.number;
+      if (!calledNums.has(n)) {
+        calledNums.add(n);
         applyAllCalled();
         checkWins();
       }
-    }
-
-    // New ball — drive from called_numbers (D1, always consistent)
-    // kv.latest can lag up to 60s due to KV eventual consistency;
-    // called_numbers is written to D1 first and is immediately accurate.
-    if (data.called_numbers && data.called_numbers.length) {
-      const latestNum = data.called_numbers[data.called_numbers.length - 1];
-      if (latestNum !== lastBallNum) {
-        // Use call phrase from kv.latest if it matches, otherwise just the number
-        const callPhrase = (kv?.latest?.number === latestNum) ? kv.latest.call : null;
-        onNewBall(latestNum, callPhrase);
+      if (n !== lastBallNum) {
+        onNewBall(n, state.latest.call ?? null);
       }
     }
 
     // Winner announcements
-    if (kv?.winner) {
-      const w = kv.winner;
-      // Mark any confirmed tier as won (not necessarily ours)
-      if (w.validated === 1 && !wonTiers.has(w.prize_tier)) {
-        markTierWon(w.prize_tier);
+    if (state.winner) {
+      const w = state.winner;
+      if (w.validated === 1 && !wonTiers.has(w.prize_tier || w.tier)) {
+        markTierWon(w.prize_tier || w.tier);
         checkWins();
       }
-      // Show certificate only if it's our ticket
       maybeShowWinner(w);
     } else {
-      // KV winner key was deleted = claim was rejected
-      // If we were waiting for confirmation, clear the toast and re-enable
+      // winner key cleared = claim was rejected
       const phraseEl = $('call-phrase');
       if (phraseEl && phraseEl.textContent === 'Waiting for caller…') {
         phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
         toast('Claim not confirmed — keep playing!', 'error', 4000);
         $('bingo-btn').disabled = false;
-        // Restore normal poll speed
         if (pollHandle) clearInterval(pollHandle);
         pollHandle = setInterval(pollKV, 2500);
         checkWins();
       }
     }
 
-  } catch(e) { /* network blip */ }
-}
-
-// ── Stale link ────────────────────────────────────────────────────────────────
-
-function openFullLink() {
-  if (fullTicketUrl) window.location.href = fullTicketUrl;
+  } catch(e) { /* network blip — try again next interval */ }
 }
 
 // ── Error display ─────────────────────────────────────────────────────────────
