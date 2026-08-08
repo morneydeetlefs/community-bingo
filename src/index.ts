@@ -507,12 +507,12 @@ async function handleStartSession(id: string, env: Env): Promise<Response> {
   `).bind(now, id).run();
 
   const kv = kvKeys(id);
+  const paidCount = await getPaidTicketCount(env, id);
   await Promise.all([
     env.KV.put(kv.status, 'active'),
-    // Re-write pot with locked flag so play.html stops showing "growing"
     env.KV.put(kv.pot, JSON.stringify({
       locked:       true,
-      tickets_sold: await getTicketCount(env, id),
+      tickets_sold: paidCount,
       ticket_price: session.ticket_price,
       pot_total:    pot,
       prizes:       buildPrizeMap(session.mode, pot, session),
