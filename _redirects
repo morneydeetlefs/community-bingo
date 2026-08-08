@@ -1,3 +1,3 @@
-/play  /play.html  200
-/caller  /caller.html  200
-/bingo  /bingo.html  200
+/play*  /play.html  200
+/caller*  /caller.html  200
+/bingo*  /bingo.html  200
