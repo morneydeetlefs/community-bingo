@@ -1499,6 +1499,15 @@ function startPolling() {
   pollHandle = setInterval(pollKV, 2500);
 }
 
+// Poll immediately when the player switches back to this tab —
+// Chrome throttles background setInterval to ~1 min, so the ball display
+// can lag badly. This fires a catch-up poll the instant the tab is visible.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && session?.status === 'active') {
+    pollKV();
+  }
+});
+
 async function pollKV() {
   if (!session) return;
   try {
