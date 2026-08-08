@@ -1313,7 +1313,7 @@ function maybeShowWinner(w) {
 
   // Restore normal poll speed
   if (pollHandle) clearInterval(pollHandle);
-  pollHandle = setInterval(pollKV, 2500);
+  pollHandle = setInterval(pollKV, 1000);
 
   // Clear any "Waiting for caller…" text and toast
   const phraseEl = $('call-phrase');
@@ -1361,7 +1361,7 @@ function playWinChime() {
 
 function startPolling() {
   if (pollHandle) clearInterval(pollHandle);
-  pollHandle = setInterval(pollKV, 2500);
+  pollHandle = setInterval(pollKV, 1000);
 }
 
 // Poll immediately when the player switches back to this tab —
@@ -1425,7 +1425,7 @@ async function pollKV() {
         toast('Claim not confirmed — keep playing!', 'error', 4000);
         $('bingo-btn').disabled = false;
         if (pollHandle) clearInterval(pollHandle);
-        pollHandle = setInterval(pollKV, 2500);
+        pollHandle = setInterval(pollKV, 1000);
         checkWins();
       }
     }
