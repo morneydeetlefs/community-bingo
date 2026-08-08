@@ -1282,10 +1282,11 @@ function applyAllCalled() {
 }
 
 function onNewBall(n, call) {
+  const alreadyDaubed = calledNums.has(n); // true if catch-up already processed this
   calledNums.add(n);
   lastBallNum = n;
 
-  // Show ball
+  // Always update the ball display
   const ball = $('the-ball');
   ball.className = 'bingo-ball';
   void ball.offsetWidth;
@@ -1301,6 +1302,12 @@ function onNewBall(n, call) {
   $('ball-number').textContent = n;
   $('call-phrase').textContent = call || n;
   $('call-sub').textContent = `${calledNums.size} called`;
+
+  // Skip daub animation and toast if catch-up already handled this number silently
+  if (alreadyDaubed) {
+    checkWins();
+    return;
+  }
 
   // Daub on all cards across all tickets (only visible card gets animation; others get silently daubed)
   tickets.forEach((ticket, ti) => {
@@ -1528,11 +1535,16 @@ async function pollKV() {
       data.called_numbers.forEach(n => {
         if (!calledNums.has(n)) { calledNums.add(n); missed = true; }
       });
-      if (missed) applyAllCalled(); // re-render card to show missed daubs
+      if (missed) {
+        applyAllCalled();
+        checkWins();
+      }
     }
 
-    // New ball — animate only the latest one
+    // New ball — only animate if we haven't seen this number yet
     if (kv?.latest && kv.latest.number !== lastBallNum) {
+      // Guard: if catch-up already added it to calledNums silently, still
+      // update the ball display but skip the daub/toast (onNewBall checks calledNums)
       onNewBall(kv.latest.number, kv.latest.call);
     }
 
