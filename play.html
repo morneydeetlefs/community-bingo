@@ -1346,29 +1346,31 @@ function onNewBall(n, call) {
 // ── Win checking ──────────────────────────────────────────────────────────────
 
 function checkWins() {
+function checkWins() {
   if (session?.status !== 'active') return;
-  const ticket = tickets[currentTicket];
-  if (!ticket) return;
-  const card = ticket.cards[currentCard];
-  if (!card) return;
-
   const daubed = (val) => val === null || calledNums.has(val);
 
   let canClaim = false;
 
-  if (mode === '90') {
-    const rows = card.map(row => row.every(daubed));
-    if (!wonTiers.has('one_line')  && rows.filter(Boolean).length >= 1) canClaim = true;
-    if (!wonTiers.has('two_lines') && rows.filter(Boolean).length >= 2) canClaim = true;
-    if (!wonTiers.has('full_house')&& rows.every(Boolean))              canClaim = true;
-  } else {
-    const rowOk = i => card[i].every(daubed);
-    const colOk = j => card.map(r => r[j]).every(daubed);
-    const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
-    const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
-    if (!wonTiers.has('any_line') &&
-        ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) canClaim = true;
-    if (!wonTiers.has('blackout') && card.flat().every(daubed)) canClaim = true;
+  for (const ticket of tickets) {
+    for (const card of (ticket.cards || [])) {
+      if (mode === '90') {
+        const rows = card.map(row => row.every(daubed));
+        if (!wonTiers.has('one_line')   && rows.filter(Boolean).length >= 1) canClaim = true;
+        if (!wonTiers.has('two_lines')  && rows.filter(Boolean).length >= 2) canClaim = true;
+        if (!wonTiers.has('full_house') && rows.every(Boolean))              canClaim = true;
+      } else {
+        const rowOk = i => card[i].every(daubed);
+        const colOk = j => card.map(r => r[j]).every(daubed);
+        const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
+        const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
+        if (!wonTiers.has('any_line') &&
+            ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) canClaim = true;
+        if (!wonTiers.has('blackout') && card.flat().every(daubed)) canClaim = true;
+      }
+      if (canClaim) break;
+    }
+    if (canClaim) break;
   }
 
   updateBingoBtn(canClaim);
@@ -1384,43 +1386,57 @@ function updateBingoBtn(canClaim) {
 // ── BINGO claim ───────────────────────────────────────────────────────────────
 
 async function claimBingo() {
-  const ticket = tickets[currentTicket];
-  if (!ticket) return;
   const btn = $('bingo-btn');
   btn.disabled = true;
   btn.classList.remove('pulse');
 
-  // Determine which tier to claim (highest eligible unclaimed tier)
-  const card = ticket.cards[currentCard];
-  if (!card) return;
   const daubed = (val) => val === null || calledNums.has(val);
 
+  // Find the best eligible tier and the card/ticket it belongs to
   let tier = null;
-  if (mode === '90') {
-    const rows = card.map(row => row.every(daubed));
-    if (!wonTiers.has('full_house') && rows.every(Boolean))             tier = 'full_house';
-    else if (!wonTiers.has('two_lines') && rows.filter(Boolean).length >= 2) tier = 'two_lines';
-    else if (!wonTiers.has('one_line')  && rows.filter(Boolean).length >= 1) tier = 'one_line';
-  } else {
-    const rowOk = i => card[i].every(daubed);
-    const colOk = j => card.map(r => r[j]).every(daubed);
-    const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
-    const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
-    if (!wonTiers.has('blackout') && card.flat().every(daubed)) tier = 'blackout';
-    else if (!wonTiers.has('any_line') &&
-             ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) tier = 'any_line';
+  let claimTicket = null;
+  let claimCardIndex = null;
+
+  for (const ticket of tickets) {
+    for (let ci = 0; ci < (ticket.cards || []).length; ci++) {
+      const card = ticket.cards[ci];
+      let cardTier = null;
+
+      if (mode === '90') {
+        const rows = card.map(row => row.every(daubed));
+        if (!wonTiers.has('full_house') && rows.every(Boolean))              cardTier = 'full_house';
+        else if (!wonTiers.has('two_lines') && rows.filter(Boolean).length >= 2) cardTier = 'two_lines';
+        else if (!wonTiers.has('one_line')  && rows.filter(Boolean).length >= 1) cardTier = 'one_line';
+      } else {
+        const rowOk = i => card[i].every(daubed);
+        const colOk = j => card.map(r => r[j]).every(daubed);
+        const diagM = () => [0,1,2,3,4].every(i => daubed(card[i][i]));
+        const diagA = () => [0,1,2,3,4].every(i => daubed(card[i][4-i]));
+        if (!wonTiers.has('blackout') && card.flat().every(daubed)) cardTier = 'blackout';
+        else if (!wonTiers.has('any_line') &&
+            ([0,1,2,3,4].some(i => rowOk(i) || colOk(i)) || diagM() || diagA())) cardTier = 'any_line';
+      }
+
+      // Pick the highest tier found across all cards
+      const tierRank = { full_house: 3, two_lines: 2, one_line: 1, blackout: 2, any_line: 1 };
+      if (cardTier && (!tier || (tierRank[cardTier] || 0) > (tierRank[tier] || 0))) {
+        tier = cardTier;
+        claimTicket = ticket;
+        claimCardIndex = ci;
+      }
+    }
   }
 
-  if (!tier) { checkWins(); return; }
+  if (!tier || !claimTicket) { btn.disabled = false; return; }
 
   try {
     const res  = await fetch(`${API_BASE}/bingo/claim`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ticket_id:  ticket.id,
+        ticket_id:  claimTicket.id,
         session_id: session.id,
-        card_index: currentCard,
+        card_index: claimCardIndex,
         prize_tier: tier,
       }),
     });
