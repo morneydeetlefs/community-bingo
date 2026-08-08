@@ -699,6 +699,14 @@ async function loadSession() {
 
 $('session-id-input').addEventListener('keydown', e => { if (e.key === 'Enter') loadSession(); });
 
+// Auto-load if ?session= is in the URL (e.g. from the CALLER → button)
+(function autoLoadFromUrl() {
+  const id = new URLSearchParams(window.location.search).get('session');
+  if (!id) return;
+  $('session-id-input').value = id;
+  loadSession();
+})();
+
 function initSession(data) {
   session = data;
   $('setup-screen').classList.add('hidden');
