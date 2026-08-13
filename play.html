@@ -772,6 +772,8 @@ let lastBallNum   = null;
 let winnerData    = null;   // confirmed winner from KV
 let lastWinnerRef = null;
 let lastWinnerValid = null; // track validated state to detect pending→confirmed transition
+let pendingClaim     = false;  // true while a claim is submitted and awaiting caller confirmation
+let currentCardIndex = 0;     // index of the card currently shown in the carousel
 
 // Derived
 let mode          = '90';   // set once session loads
@@ -1003,7 +1005,7 @@ function updatePrizeBadgeAmounts(pot) {
   if (!pot) return;
   const map = mode === '90'
     ? { one_line: session.pct_one_line, two_lines: session.pct_two_lines, full_house: session.pct_full_house }
-    : { any_line: session.pct_any_line, full_house: session.pct_full_house };
+    : { any_line: session.pct_any_line, blackout: session.pct_full_house };
   for (const [tier, pct] of Object.entries(map)) {
     const el = $(`badge-amt-${tier}`);
     if (el) el.textContent = fmt(calcPrize(pot, pct));
@@ -1121,9 +1123,9 @@ function daubCell(val, cellPrefix) {
   el.classList.add('flash');
 }
 
-// Single card — prefix is always ticket.id + '-c0'
+// Prefix for the currently-displayed card in the carousel
 function currentCellPrefix() {
-  return ticket ? `${ticket.id}-c0` : null;
+  return ticket ? `${ticket.id}-c${currentCardIndex}` : null;
 }
 
 function updateDaubHint() {
@@ -1268,7 +1270,7 @@ async function claimBingo() {
       body: JSON.stringify({
         ticket_id:  ticket.id,
         session_id: session.id,
-        card_index: 0,
+        card_index: currentCardIndex,
         prize_tier: tier,
       }),
     });
@@ -1277,6 +1279,7 @@ async function claimBingo() {
     if (!res.ok) throw new Error(data.error || 'Claim failed');
 
     if (data.valid) {
+      pendingClaim = true;
       toast('BINGO! Waiting for caller to confirm…', 'info', 30000);
       $('call-phrase').textContent = 'Waiting for caller…';
       // Poll faster while waiting for confirmation
@@ -1310,6 +1313,7 @@ function maybeShowWinner(w) {
   lastWinnerRef   = w.ref;
   lastWinnerValid = 1;
   winnerData      = w;
+  pendingClaim    = false;
 
   // Restore normal poll speed
   if (pollHandle) clearInterval(pollHandle);
@@ -1418,10 +1422,11 @@ async function pollKV() {
       }
       maybeShowWinner(w);
     } else {
-      // winner key cleared = claim was rejected
-      const phraseEl = $('call-phrase');
-      if (phraseEl && phraseEl.textContent === 'Waiting for caller…') {
-        phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
+      // winner key cleared = claim was rejected (or no pending winner)
+      if (pendingClaim) {
+        pendingClaim = false;
+        const phraseEl = $('call-phrase');
+        if (phraseEl) phraseEl.textContent = phraseEl.dataset.phrase || lastBallNum || '—';
         toast('Claim not confirmed — keep playing!', 'error', 4000);
         $('bingo-btn').disabled = false;
         if (pollHandle) clearInterval(pollHandle);

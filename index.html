@@ -658,7 +658,9 @@ function copyId(id) {
 }
 
 function openCaller(id) {
-  window.open(`https://community-bingo.pages.dev/caller.html?session=${id}`, '_blank');
+  // Derive caller URL from PLAY_BASE so one update covers both links
+  const callerBase = PLAY_BASE.replace(/\/play\.html.*$/, '/caller.html');
+  window.open(`${callerBase}?session=${id}`, '_blank');
 }
 
 // ── Session selects (shared across tabs) ──────────────────────────────────────
@@ -777,13 +779,31 @@ async function renderTicketList(sessionData, sessionId) {
         </span>
         <div class="ticket-actions">
           ${t.player_phone ? `
-            <button class="btn btn-wa btn-sm" onclick="sendWhatsApp('${t.id}', '${t.player_phone}', '${t.player_name}', ${t.card_count}, '${sessionData.name}')">
+            <button class="btn btn-wa btn-sm wa-send-btn"
+              data-ticket-id="${t.id}"
+              data-phone="${encodeURIComponent(t.player_phone)}"
+              data-name="${encodeURIComponent(t.player_name)}"
+              data-cards="${t.card_count}"
+              data-session="${encodeURIComponent(sessionData.name)}">
               WA
             </button>` : ''}
           <button class="btn btn-secondary btn-sm" onclick="copyPlayUrl('${t.id}')">Link</button>
         </div>
       </div>
     `).join('');
+
+    // Delegated listener — avoids any injection risk from phone/name values
+    list.querySelectorAll('.wa-send-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        sendWhatsApp(
+          btn.dataset.ticketId,
+          decodeURIComponent(btn.dataset.phone),
+          decodeURIComponent(btn.dataset.name),
+          parseInt(btn.dataset.cards, 10),
+          decodeURIComponent(btn.dataset.session)
+        );
+      });
+    });
   } catch(e) {
     list.innerHTML = `<div class="empty">Could not load tickets: ${e.message}</div>`;
   }
